@@ -103,9 +103,18 @@ func (pk *PrivateKey) Secret() *big.Int {
 	return pk.privateKey.D
 }
 
-// SavePrivateKey saves the private key to the specified file.
+// Save saves the private key to the specified file.
 func (pk *PrivateKey) Save(fileName string) error {
 	return ioutil.WriteFile(fileName, []byte(pk.privateKey.D.Bytes()), 0600)
+}
+
+// SaveWithPassphrase encrypts the private key with passphrase and saves it to the specified file.
+func (pk *PrivateKey) SaveWithPassphrase(fileName string, passphrase string) error {
+	data, err := pk.EncryptKeyWithPassphrase(passphrase)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(fileName, data, 0600)
 }
 
 // PublicKey returns the public key derived from this private key.
