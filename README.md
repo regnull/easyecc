@@ -4,13 +4,26 @@ This package ties several other commonly used cryptography packages together. Th
 
 ## Creating Private Keys
 
-Create a new random private key:
+There are several ways to create private keys:
 
 ```
-import github.com/regnull/easyecc
+import (
+  "math/big"
+  "github.com/regnull/easyecc"
+)
 
-key, err := easyecc.NewRandomPrivateKey()
+key1, err := easyecc.NewRandomPrivateKey()
 if err != nil {
   // Do something.
 }
+
+
+// Or, create a private key from a secret:
+secret := big.NewInt(123)
+key2, err := easyecc.NewPrivateKey(secret)
+
+// Or, create a private key from a password and salt:
+password := []byte("supersecretpassword")
+salt := []byte("12345")
+key3, err := easyecc.NewPrivateKeyFromPassword(password, salt)
 ```
