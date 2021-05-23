@@ -26,4 +26,14 @@ key2, err := easyecc.NewPrivateKey(secret)
 password := []byte("supersecretpassword")
 salt := []byte("12345")
 key3, err := easyecc.NewPrivateKeyFromPassword(password, salt)
+
+// Or, create a private key from encrypted bytes:
+// Read data from previously saved somehow.
+passphrase := "super secret passphrase"
+key4, err := easycc.NewPrivateKeyFromEncryptedWithPassphrase(data, passphrase)
+
+// Finally, you can load a private key that was previously saved to a file:
+key5, err := easyecc.LoadPrivateKey("some/file.key")
 ```
+
+## Signing Data and Verifying the Signature
