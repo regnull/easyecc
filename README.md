@@ -7,10 +7,10 @@ This package ties several other commonly used cryptography packages together. Th
 Create a new random private key:
 
 ```
-  import github.com/regnull/easyecc
-  
-  key, err := easyecc.NewRandomPrivateKey()
-  if err != nil {
-    // Do something.
-  }
+import github.com/regnull/easyecc
+
+key, err := easyecc.NewRandomPrivateKey()
+if err != nil {
+  // Do something.
+}
 ```
