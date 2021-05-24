@@ -29,7 +29,7 @@ func Test_PrivateKey_Save(t *testing.T) {
 	assert.NoError(err)
 
 	fileName := path.Join(dir, "private_key")
-	err = pk.Save(fileName)
+	err = pk.Save(fileName, "")
 	assert.NoError(err)
 
 	fi, err := os.Stat(fileName)
@@ -49,10 +49,10 @@ func Test_PrivateKey_Load(t *testing.T) {
 	assert.NoError(err)
 
 	fileName := path.Join(dir, "private_key")
-	err = pk.Save(fileName)
+	err = pk.Save(fileName, "")
 	assert.NoError(err)
 
-	pkCopy, err := LoadPrivateKey(fileName)
+	pkCopy, err := NewPrivateKeyFromFile(fileName, "")
 	assert.NoError(err)
 	assert.NotNil(pkCopy)
 	assert.EqualValues(pk.privateKey.D, pkCopy.privateKey.D)

@@ -74,28 +74,30 @@ func NewPrivateKeyFromEncryptedWithPassphrase(data []byte, passphrase string) (*
 	return NewPrivateKey(secret), nil
 }
 
-// LoadPrivateKey loads private key from file.
-func LoadPrivateKey(fileName string) (*PrivateKey, error) {
+// LoadPrivateKey loads private key from file and decrypts it using the given passphrase.
+// If the passphrase is an empty string, no decryption is done (the file content is assumed
+// to be not encrypted).
+func NewPrivateKeyFromFile(fileName string, passphrase string) (*PrivateKey, error) {
 	b, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key: %w", err)
+	}
+
+	if len(b) < 32 {
+		return nil, fmt.Errorf("invalid private key length")
+	}
+
+	if passphrase != "" {
+		return NewPrivateKeyFromEncryptedWithPassphrase(b, passphrase)
 	}
 
 	if len(b) != 32 {
 		return nil, fmt.Errorf("invalid private key length")
 	}
 
-	d := new(big.Int)
-	d.SetBytes(b)
-
-	// We don't save public key, instead, we re-construct public key
-	// from the private key.
-	pk := &ecdsa.PrivateKey{
-		D: d}
-	pk.PublicKey.Curve = btcec.S256()
-	pk.PublicKey.X, pk.PublicKey.Y = pk.PublicKey.Curve.ScalarBaseMult(d.Bytes())
-
-	return &PrivateKey{privateKey: pk}, nil
+	secret := new(big.Int)
+	secret.SetBytes(b)
+	return NewPrivateKey(secret), nil
 }
 
 // Secret returns the private key's secret.
@@ -104,17 +106,16 @@ func (pk *PrivateKey) Secret() *big.Int {
 }
 
 // Save saves the private key to the specified file.
-func (pk *PrivateKey) Save(fileName string) error {
-	return ioutil.WriteFile(fileName, []byte(pk.privateKey.D.Bytes()), 0600)
-}
-
-// SaveWithPassphrase encrypts the private key with passphrase and saves it to the specified file.
-func (pk *PrivateKey) SaveWithPassphrase(fileName string, passphrase string) error {
-	data, err := pk.EncryptKeyWithPassphrase(passphrase)
-	if err != nil {
-		return err
+func (pk *PrivateKey) Save(fileName string, passphrase string) error {
+	if passphrase != "" {
+		data, err := pk.EncryptKeyWithPassphrase(passphrase)
+		if err != nil {
+			return err
+		}
+		return ioutil.WriteFile(fileName, data, 0600)
 	}
-	return ioutil.WriteFile(fileName, data, 0600)
+
+	return ioutil.WriteFile(fileName, []byte(pk.privateKey.D.Bytes()), 0600)
 }
 
 // PublicKey returns the public key derived from this private key.
