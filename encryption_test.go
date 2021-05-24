@@ -2,7 +2,6 @@ package easyecc
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -39,7 +38,6 @@ func TestEncryptDecrypt(t *testing.T) {
 
 	message := "attack at dawn"
 	ciphertext, err := alicePrivateKey.Encrypt([]byte(message), bobPrivateKey.PublicKey())
-	fmt.Printf("%x\n", ciphertext)
 	assert.NoError(err)
 
 	plaintext, err := bobPrivateKey.Decrypt(ciphertext, alicePrivateKey.PublicKey())
