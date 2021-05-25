@@ -6,7 +6,7 @@ import (
 	"math/big"
 )
 
-func Example_SignAndVerify() {
+func ExamplePrivateKey_Sign() {
 	privateKey := NewPrivateKey(big.NewInt(12345))
 	data := "super secret message"
 	hash := Hash256([]byte(data))
@@ -18,4 +18,26 @@ func Example_SignAndVerify() {
 	success := signature.Verify(publicKey, hash)
 	fmt.Printf("Signature verified: %v\n", success)
 	// Output: Signature verified: true
+}
+
+func ExamplePrivateKey_Encrypt() {
+	aliceKey, err := NewRandomPrivateKey()
+	if err != nil {
+		log.Fatal(err)
+	}
+	bobKey, err := NewRandomPrivateKey()
+	if err != nil {
+		log.Fatal(err)
+	}
+	data := "super secret message"
+	encrypted, err := aliceKey.Encrypt([]byte(data), bobKey.PublicKey())
+	if err != nil {
+		log.Fatal(err)
+	}
+	decrypted, err := bobKey.Decrypt(encrypted, aliceKey.PublicKey())
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s\n", string(decrypted))
+	// Output: super secret message
 }
