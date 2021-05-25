@@ -41,3 +41,14 @@ func ExamplePrivateKey_Encrypt() {
 	fmt.Printf("%s\n", string(decrypted))
 	// Output: super secret message
 }
+
+func ExamplePrivateKey_EncryptKeyWithPassphrase() {
+	privateKey := NewPrivateKey(big.NewInt(12345))
+	encryptedKey, err := privateKey.EncryptKeyWithPassphrase("my passphrase")
+	if err != nil {
+		log.Fatal(err)
+	}
+	decryptedKey, err := NewPrivateKeyFromEncryptedWithPassphrase(encryptedKey, "my passphrase")
+	fmt.Printf("%d\n", decryptedKey.Secret())
+	// Output: 12345
+}
