@@ -1,6 +1,6 @@
 /*
 Package easyecc ties together several other common packages and makes it easy to
-perform common elliptic key cryptography operations (secp256k1, used by Bitcoin).
+perform common elliptic key cryptography operations (secp256k1, used by Bitcoin, see https://en.bitcoin.it/wiki/Secp256k1).
 
 These operations include:
 
