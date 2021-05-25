@@ -2,38 +2,59 @@
 
 This package ties several other commonly used cryptography packages together. The goal is to make common cryptographic operations simple. It is based on [secp256k1](https://en.bitcoin.it/wiki/Secp256k1) cryptography, most famously used by Bitcoin.
 
-## Creating Private Keys
+## Examples
 
-There are several ways to create private keys:
+Sign hash and verify signature:
 
 ```
-import (
-  "math/big"
-  "github.com/regnull/easyecc"
-)
+	privateKey := NewPrivateKey(big.NewInt(12345))
+	data := "super secret message"
+	hash := Hash256([]byte(data))
+	signature, err := privateKey.Sign(hash)
+	if err != nil {
+		log.Fatal(err)
+	}
+	publicKey := privateKey.PublicKey()
+	success := signature.Verify(publicKey, hash)
+	fmt.Printf("Signature verified: %v\n", success)
+	// Output: Signature verified: true
 
-key1, err := easyecc.NewRandomPrivateKey()
-if err != nil {
-  // Do something.
-}
+```
 
+Encrypt data so only the owner of the private key can decrypt it:
 
-// Or, create a private key from a secret:
-secret := big.NewInt(123)
-key2, err := easyecc.NewPrivateKey(secret)
+```
+	aliceKey, err := NewRandomPrivateKey()
+	if err != nil {
+		log.Fatal(err)
+	}
+	bobKey, err := NewRandomPrivateKey()
+	if err != nil {
+		log.Fatal(err)
+	}
+	data := "super secret message"
+	encrypted, err := aliceKey.Encrypt([]byte(data), bobKey.PublicKey())
+	if err != nil {
+		log.Fatal(err)
+	}
+	decrypted, err := bobKey.Decrypt(encrypted, aliceKey.PublicKey())
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s\n", string(decrypted))
+	// Output: super secret message
+```
 
-// Or, create a private key from a password and salt:
-password := []byte("supersecretpassword")
-salt := []byte("12345")
-key3, err := easyecc.NewPrivateKeyFromPassword(password, salt)
-
-// Or, create a private key from encrypted bytes:
-// Read data from previously saved somehow.
-passphrase := "super secret passphrase"
-key4, err := easycc.NewPrivateKeyFromEncryptedWithPassphrase(data, passphrase)
-
-// Finally, you can load a private key that was previously saved to a file:
-key5, err := easyecc.LoadPrivateKey("some/file.key")
+Encrypt private key with passphrase:
+```
+	privateKey := NewPrivateKey(big.NewInt(12345))
+	encryptedKey, err := privateKey.EncryptKeyWithPassphrase("my passphrase")
+	if err != nil {
+		log.Fatal(err)
+	}
+	decryptedKey, err := NewPrivateKeyFromEncryptedWithPassphrase(encryptedKey, "my passphrase")
+	fmt.Printf("%d\n", decryptedKey.Secret())
+	// Output: 12345
 ```
 
 ## Signing Data and Verifying the Signature
