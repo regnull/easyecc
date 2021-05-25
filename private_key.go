@@ -105,7 +105,9 @@ func (pk *PrivateKey) Secret() *big.Int {
 	return pk.privateKey.D
 }
 
-// Save saves the private key to the specified file.
+// Save saves the private key to the specified file. If the passphrase is given, the key will
+// be encrypted with this passphrase. If the passphrase is an empty string, the key is not
+// encrypted.
 func (pk *PrivateKey) Save(fileName string, passphrase string) error {
 	if passphrase != "" {
 		data, err := pk.EncryptKeyWithPassphrase(passphrase)
