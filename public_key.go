@@ -58,7 +58,8 @@ func NewPublicFromSerializedCompressed(serialized []byte) (*PublicKey, error) {
 		Y:     y}}, nil
 }
 
-// SerializeCompressed returns the private key serialized in SEC compressed format.
+// SerializeCompressed returns the private key serialized in SEC compressed format. The result
+// is 33 bytes long.
 func (pbk *PublicKey) SerializeCompressed() []byte {
 	buf := make([]byte, 33)
 	if new(big.Int).Mod(pbk.publicKey.Y, big.NewInt(2)).Cmp(big.NewInt(0)) == 0 {

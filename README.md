@@ -57,4 +57,18 @@ Encrypt private key with passphrase:
 	// Output: 12345
 ```
 
-## Signing Data and Verifying the Signature
+Convert public key to the serialized compressed representation:
+```
+	privateKey := NewPrivateKey(big.NewInt(12345))
+	publicKey := privateKey.PublicKey()
+	serializedCompressed := publicKey.SerializeCompressed()
+	fmt.Printf("%x\n", serializedCompressed)
+	publicKeyCopy, err := NewPublicFromSerializedCompressed(serializedCompressed)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sameKey := publicKey.Equal(publicKeyCopy)
+	fmt.Printf("the correct key was created: %v\n", sameKey)
+	// Output: 03f01d6b9018ab421dd410404cb869072065522bf85734008f105cf385a023a80f
+	// the correct key was created: true
+```
