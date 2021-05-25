@@ -82,10 +82,12 @@ func (pbk *PublicKey) SerializeCompressed() []byte {
 	return buf
 }
 
+// X returns X component of the public key.
 func (pbk *PublicKey) X() *big.Int {
 	return pbk.publicKey.X
 }
 
+// Y returns Y component of the public key.
 func (pbk *PublicKey) Y() *big.Int {
 	return pbk.publicKey.Y
 }
