@@ -103,7 +103,7 @@ func (pbk *PublicKey) Address() string {
 	return base58.Encode(addr)
 }
 
-// Equal returns true if this key is equal to the other.
+// Equal returns true if this key is equal to the other key.
 func (pbk *PublicKey) Equal(other *PublicKey) bool {
 	if other == nil {
 		return false
