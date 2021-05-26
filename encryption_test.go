@@ -36,7 +36,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	bobPrivateKey, err := NewRandomPrivateKey()
 	assert.NoError(err)
 
-	message := "attack at dawn"
+	message := "a"
 	ciphertext, err := alicePrivateKey.Encrypt([]byte(message), bobPrivateKey.PublicKey())
 	assert.NoError(err)
 
