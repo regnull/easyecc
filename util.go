@@ -9,3 +9,14 @@ func GetPlainTextLength(cipherTextLength int) int {
 	}
 	return cipherTextLength - 28
 }
+
+// SerializedCompressedToAddress is a convenience function which converts
+// serialized compressed representation of the private key to its address (which is shorter).
+// If the key is invalid, the return string will contain an error message.
+func SerializedCompressedToAddress(key []byte) string {
+	publicKey, err := NewPublicFromSerializedCompressed(key)
+	if err != nil {
+		return "**invalid key**"
+	}
+	return publicKey.Address()
+}
