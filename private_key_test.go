@@ -109,3 +109,17 @@ func Test_PrivateKey_NewPrivateKeyFromEncryptedWithPassphrase_InvalidData(t *tes
 	assert.Nil(key)
 	assert.Error((err))
 }
+
+func Test_PrivateKey_Mnemonic(t *testing.T) {
+	assert := assert.New(t)
+
+	key, err := NewRandomPrivateKey()
+	assert.NoError(err)
+	mnemonic, err := key.Mnemonic()
+	assert.NoError(err)
+
+	key1, err := NewPrivateKeyFromMnemonic(mnemonic)
+	assert.NoError(err)
+
+	assert.True(key.Equal(key1))
+}

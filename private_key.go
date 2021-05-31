@@ -13,6 +13,7 @@ import (
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/tyler-smith/go-bip39"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/scrypt"
 )
@@ -97,6 +98,16 @@ func NewPrivateKeyFromFile(fileName string, passphrase string) (*PrivateKey, err
 
 	secret := new(big.Int)
 	secret.SetBytes(b)
+	return NewPrivateKey(secret), nil
+}
+
+// NewPrivateKeyFromMnemonic creates private key from a mnemonic phrase.
+func NewPrivateKeyFromMnemonic(mnemonic string) (*PrivateKey, error) {
+	b, err := bip39.EntropyFromMnemonic(mnemonic)
+	if err != nil {
+		return nil, err
+	}
+	secret := new(big.Int).SetBytes(b)
 	return NewPrivateKey(secret), nil
 }
 
@@ -218,6 +229,16 @@ func (pk *PrivateKey) EncryptKeyWithPassphrase(passphrase string) ([]byte, error
 	ciphertext := gcm.Seal(nonce, nonce, pk.privateKey.D.Bytes(), nil)
 	ciphertext = append(ciphertext, salt...)
 	return ciphertext, nil
+}
+
+// Mnemonic returns a mnemonic phrase which can be used to recover this private key.
+func (pk *PrivateKey) Mnemonic() (string, error) {
+	return bip39.NewMnemonic(pk.privateKey.D.Bytes())
+}
+
+// Equal returns true if this key is equal to the other key.
+func (pk *PrivateKey) Equal(other *PrivateKey) bool {
+	return pk.privateKey.D.Cmp(other.privateKey.D) == 0
 }
 
 func deriveKey(password, salt []byte) ([]byte, []byte, error) {
