@@ -155,11 +155,8 @@ func (pk *PrivateKey) GetSharedEncryptionKey(counterParty *PublicKey) []byte {
 	return hash[:]
 }
 
-// Encrypt encrypts content with a shared key derived from this private key and the
-// counterparty's public key.
-func (pk *PrivateKey) Encrypt(content []byte, publicKey *PublicKey) ([]byte, error) {
-	encryptionKey := pk.GetSharedEncryptionKey(publicKey)
-	c, err := aes.NewCipher(encryptionKey)
+func encrypt(key []byte, content []byte) ([]byte, error) {
+	c, err := aes.NewCipher(key[:])
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cipher: %w", err)
 	}
@@ -177,11 +174,22 @@ func (pk *PrivateKey) Encrypt(content []byte, publicKey *PublicKey) ([]byte, err
 	return gcm.Seal(nonce, nonce, content, nil), nil
 }
 
-// Decrypt decrypts content with a shared key derived from this private key and the
+// Encrypt encrypts content with a shared key derived from this private key and the
 // counterparty's public key.
-func (pk *PrivateKey) Decrypt(content []byte, publicKey *PublicKey) ([]byte, error) {
+func (pk *PrivateKey) Encrypt(content []byte, publicKey *PublicKey) ([]byte, error) {
 	encryptionKey := pk.GetSharedEncryptionKey(publicKey)
-	c, err := aes.NewCipher(encryptionKey)
+	return encrypt(encryptionKey, content)
+}
+
+// EncryptSymmetric encrypts content using this private key. The same private key
+// must be used for decryption.
+func (pk *PrivateKey) EncryptSymmetric(content []byte) ([]byte, error) {
+	key := sha256.Sum256(pk.privateKey.X.Bytes())
+	return encrypt(key[:], content)
+}
+
+func decrypt(key []byte, content []byte) ([]byte, error) {
+	c, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cipher: %w", err)
 	}
@@ -202,6 +210,19 @@ func (pk *PrivateKey) Decrypt(content []byte, publicKey *PublicKey) ([]byte, err
 		return nil, fmt.Errorf("failed to decrypt: %w", err)
 	}
 	return plaintext, nil
+}
+
+// Decrypt decrypts content with a shared key derived from this private key and the
+// counterparty's public key.
+func (pk *PrivateKey) Decrypt(content []byte, publicKey *PublicKey) ([]byte, error) {
+	encryptionKey := pk.GetSharedEncryptionKey(publicKey)
+	return decrypt(encryptionKey, content)
+}
+
+// DecryptSymmetric decrypts the content that was previously encrypted using this private key.
+func (pk *PrivateKey) DecryptSymmetric(content []byte) ([]byte, error) {
+	key := sha256.Sum256(pk.privateKey.X.Bytes())
+	return decrypt(key[:], content)
 }
 
 // EncryptKeyWithPassphrase encrypts this private key using a passphrase.

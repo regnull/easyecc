@@ -45,3 +45,20 @@ func TestEncryptDecrypt(t *testing.T) {
 
 	assert.True(bytes.Equal([]byte(message), plaintext))
 }
+
+func TestEncryptDecryptSymmetric(t *testing.T) {
+	assert := assert.New(t)
+
+	privateKey, err := NewRandomPrivateKey()
+	assert.NoError(err)
+
+	message := "super secret message"
+	encrypted, err := privateKey.EncryptSymmetric([]byte(message))
+	assert.NoError(err)
+
+	assert.True(len(encrypted) > len([]byte(message)))
+
+	decrypted, err := privateKey.DecryptSymmetric(encrypted)
+	assert.NoError(err)
+	assert.EqualValues(message, string(decrypted))
+}
