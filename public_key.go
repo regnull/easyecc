@@ -118,3 +118,8 @@ func (pbk *PublicKey) Equal(other *PublicKey) bool {
 func (pbk *PublicKey) EqualSerializedCompressed(other []byte) bool {
 	return bytes.Compare(pbk.SerializeCompressed(), other) == 0
 }
+
+// ToECDSA returns this key as crypto/ecdsa public key.
+func (pbk *PublicKey) ToECDSA() *ecdsa.PublicKey {
+	return pbk.publicKey
+}

@@ -262,6 +262,11 @@ func (pk *PrivateKey) Equal(other *PrivateKey) bool {
 	return pk.privateKey.D.Cmp(other.privateKey.D) == 0
 }
 
+// ToECDSA returns this key as crypto/ecdsa private key.
+func (pk *PrivateKey) ToECDSA() *ecdsa.PrivateKey {
+	return pk.privateKey
+}
+
 func deriveKey(password, salt []byte) ([]byte, []byte, error) {
 	if salt == nil {
 		salt = make([]byte, 32)
