@@ -8,6 +8,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/base58"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // PublicKey represents elliptic curve cryptography private key.
@@ -104,6 +105,11 @@ func (pbk *PublicKey) Address() string {
 	return base58.Encode(addr)
 }
 
+// EthereumAddress returns an Ethereum address for this public key.
+func (pbk *PublicKey) EthereumAddress() string {
+	return crypto.PubkeyToAddress(*pbk.publicKey).Hex()
+}
+
 // Equal returns true if this key is equal to the other key.
 func (pbk *PublicKey) Equal(other *PublicKey) bool {
 	if other == nil {
@@ -116,7 +122,7 @@ func (pbk *PublicKey) Equal(other *PublicKey) bool {
 // EqualSerializedCompressed returns true if this key is equal to the other,
 // given as serialized compressed representation.
 func (pbk *PublicKey) EqualSerializedCompressed(other []byte) bool {
-	return bytes.Compare(pbk.SerializeCompressed(), other) == 0
+	return bytes.Equal(pbk.SerializeCompressed(), other)
 }
 
 // ToECDSA returns this key as crypto/ecdsa public key.
