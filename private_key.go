@@ -185,7 +185,7 @@ func (pk *PrivateKey) Encrypt(content []byte, publicKey *PublicKey) ([]byte, err
 // EncryptSymmetric encrypts content using this private key. The same private key
 // must be used for decryption.
 func (pk *PrivateKey) EncryptSymmetric(content []byte) ([]byte, error) {
-	key := sha256.Sum256(pk.privateKey.X.Bytes())
+	key := sha256.Sum256(pk.privateKey.D.Bytes())
 	return encrypt(key[:], content)
 }
 
@@ -222,7 +222,7 @@ func (pk *PrivateKey) Decrypt(content []byte, publicKey *PublicKey) ([]byte, err
 
 // DecryptSymmetric decrypts the content that was previously encrypted using this private key.
 func (pk *PrivateKey) DecryptSymmetric(content []byte) ([]byte, error) {
-	key := sha256.Sum256(pk.privateKey.X.Bytes())
+	key := sha256.Sum256(pk.privateKey.D.Bytes())
 	return decrypt(key[:], content)
 }
 
