@@ -1,5 +1,7 @@
 # Easy Elliptic Curve Cryptography in Go
 
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/regnull/easyecc/Go)
+
 This package ties several other commonly used cryptography packages together. The goal is to make common cryptographic operations simple. It is based on [secp256k1](https://en.bitcoin.it/wiki/Secp256k1) cryptography, most famously used by Bitcoin.
 
 This package was originally the part of https://github.com/regnull/ubikom, but then became its own little package, because why not.
