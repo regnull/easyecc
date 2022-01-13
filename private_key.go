@@ -13,6 +13,7 @@ import (
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcec"
+	ecies "github.com/ecies/go"
 	"github.com/tyler-smith/go-bip39"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/scrypt"
@@ -265,6 +266,14 @@ func (pk *PrivateKey) Equal(other *PrivateKey) bool {
 // ToECDSA returns this key as crypto/ecdsa private key.
 func (pk *PrivateKey) ToECDSA() *ecdsa.PrivateKey {
 	return pk.privateKey
+}
+
+// DecryptECIES decrypts cyphertext that was previously encrypted
+// using Elliptic Curve Integrated Encryption Scheme.
+// See https://cryptopp.com/wiki/Elliptic_Curve_Integrated_Encryption_Scheme
+func (pk *PrivateKey) DecryptECIES(cyphertext []byte) ([]byte, error) {
+	k := ecies.NewPrivateKeyFromBytes(pk.privateKey.D.Bytes())
+	return ecies.Decrypt(k, cyphertext)
 }
 
 func deriveKey(password, salt []byte) ([]byte, []byte, error) {

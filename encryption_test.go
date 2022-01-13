@@ -62,3 +62,21 @@ func TestEncryptDecryptSymmetric(t *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(message, string(decrypted))
 }
+
+func Test_ECIESEncryptDecrypt(t *testing.T) {
+	assert := assert.New(t)
+
+	privateKey, err := NewRandomPrivateKey()
+	assert.NoError(err)
+
+	//k := ecies.NewPrivateKeyFromBytes(privateKey.Secret().Bytes())
+
+	message := "super secret message"
+	encrypted, err := privateKey.PublicKey().EncryptECIES([]byte(message))
+	assert.NoError(err)
+
+	decrypted, err := privateKey.DecryptECIES(encrypted)
+	assert.NoError(err)
+
+	assert.Equal(message, string(decrypted))
+}
