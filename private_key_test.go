@@ -123,3 +123,27 @@ func Test_PrivateKey_Mnemonic(t *testing.T) {
 
 	assert.True(key.Equal(key1))
 }
+
+func Test_PrivateKey_PadOnSave(t *testing.T) {
+	assert := assert.New(t)
+
+	key := NewPrivateKey(big.NewInt(123))
+
+	dir, err := ioutil.TempDir("", "pktest")
+	assert.NoError(err)
+
+	fileName := path.Join(dir, "private_key")
+	err = key.Save(fileName, "")
+	assert.NoError(err)
+
+	fi, err := os.Stat(fileName)
+	assert.NoError(err)
+	assert.EqualValues(32, fi.Size())
+
+	key1, err := NewPrivateKeyFromFile(fileName, "")
+	assert.NoError(err)
+
+	assert.True(key.Equal(key1))
+
+	assert.NoError(os.RemoveAll(dir))
+}

@@ -129,7 +129,14 @@ func (pk *PrivateKey) Save(fileName string, passphrase string) error {
 		return ioutil.WriteFile(fileName, data, 0600)
 	}
 
-	return ioutil.WriteFile(fileName, []byte(pk.privateKey.D.Bytes()), 0600)
+	// Pad with zero bytes if necessary.
+	b := pk.privateKey.D.Bytes()
+	if len(b) < 32 {
+		bb := make([]byte, 32-len(b))
+		bb = append(bb, b...)
+		b = bb
+	}
+	return ioutil.WriteFile(fileName, b, 0600)
 }
 
 // PublicKey returns the public key derived from this private key.
