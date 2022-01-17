@@ -76,7 +76,7 @@ func NewPrivateKeyFromEncryptedWithPassphrase(data []byte, passphrase string) (*
 	return NewPrivateKey(secret), nil
 }
 
-// LoadPrivateKey loads private key from file and decrypts it using the given passphrase.
+// NewPrivateKeyFromFile loads private key from file and decrypts it using the given passphrase.
 // If the passphrase is an empty string, no decryption is done (the file content is assumed
 // to be not encrypted).
 func NewPrivateKeyFromFile(fileName string, passphrase string) (*PrivateKey, error) {
