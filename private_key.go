@@ -9,8 +9,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
+	"os"
 
 	"github.com/btcsuite/btcd/btcec"
 	ecies "github.com/ecies/go"
@@ -80,7 +80,7 @@ func NewPrivateKeyFromEncryptedWithPassphrase(data []byte, passphrase string) (*
 // If the passphrase is an empty string, no decryption is done (the file content is assumed
 // to be not encrypted).
 func NewPrivateKeyFromFile(fileName string, passphrase string) (*PrivateKey, error) {
-	b, err := ioutil.ReadFile(fileName)
+	b, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key: %w", err)
 	}
@@ -126,7 +126,7 @@ func (pk *PrivateKey) Save(fileName string, passphrase string) error {
 		if err != nil {
 			return err
 		}
-		return ioutil.WriteFile(fileName, data, 0600)
+		return os.WriteFile(fileName, data, 0600)
 	}
 
 	// Pad with zero bytes if necessary.
@@ -136,7 +136,7 @@ func (pk *PrivateKey) Save(fileName string, passphrase string) error {
 		bb = append(bb, b...)
 		b = bb
 	}
-	return ioutil.WriteFile(fileName, b, 0600)
+	return os.WriteFile(fileName, b, 0600)
 }
 
 // PublicKey returns the public key derived from this private key.
