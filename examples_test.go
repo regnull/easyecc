@@ -7,7 +7,7 @@ import (
 )
 
 func ExamplePrivateKey_Sign() {
-	privateKey := NewPrivateKey(big.NewInt(12345))
+	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
 	data := "super secret message"
 	hash := Hash256([]byte(data))
 	signature, err := privateKey.Sign(hash)
@@ -21,20 +21,20 @@ func ExamplePrivateKey_Sign() {
 }
 
 func ExamplePrivateKey_Encrypt() {
-	aliceKey, err := NewRandomPrivateKey()
+	aliceKey, err := GeneratePrivateKey(P256)
 	if err != nil {
 		log.Fatal(err)
 	}
-	bobKey, err := NewRandomPrivateKey()
+	bobKey, err := GeneratePrivateKey(P256)
 	if err != nil {
 		log.Fatal(err)
 	}
 	data := "super secret message"
-	encrypted, err := aliceKey.Encrypt([]byte(data), bobKey.PublicKey())
+	encrypted, err := aliceKey.EncryptECDH([]byte(data), bobKey.PublicKey())
 	if err != nil {
 		log.Fatal(err)
 	}
-	decrypted, err := bobKey.Decrypt(encrypted, aliceKey.PublicKey())
+	decrypted, err := bobKey.DecryptECDH(encrypted, aliceKey.PublicKey())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,27 +43,27 @@ func ExamplePrivateKey_Encrypt() {
 }
 
 func ExamplePrivateKey_EncryptKeyWithPassphrase() {
-	privateKey := NewPrivateKey(big.NewInt(12345))
+	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
 	encryptedKey, err := privateKey.EncryptKeyWithPassphrase("my passphrase")
 	if err != nil {
 		log.Fatal(err)
 	}
-	decryptedKey, err := NewPrivateKeyFromEncryptedWithPassphrase(encryptedKey, "my passphrase")
+	decryptedKey, err := CreatePrivateKeyFromEncrypted(P256, encryptedKey, "my passphrase")
 	fmt.Printf("%d\n", decryptedKey.Secret())
 	// Output: 12345
 }
 
 func ExamplePublicKey_SerializeCompressed() {
-	privateKey := NewPrivateKey(big.NewInt(12345))
+	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
 	publicKey := privateKey.PublicKey()
 	serializedCompressed := publicKey.SerializeCompressed()
 	fmt.Printf("%x\n", serializedCompressed)
-	publicKeyCopy, err := NewPublicFromSerializedCompressed(serializedCompressed)
+	publicKeyCopy, err := DeserializeCompressed(P256, serializedCompressed)
 	if err != nil {
 		log.Fatal(err)
 	}
 	sameKey := publicKey.Equal(publicKeyCopy)
 	fmt.Printf("the correct key was created: %v\n", sameKey)
-	// Output: 03f01d6b9018ab421dd410404cb869072065522bf85734008f105cf385a023a80f
+	// Output: 0226efcebd0ee9e34a669187e18b3a9122b2f733945b649cc9f9f921e9f9dad812
 	// the correct key was created: true
 }
