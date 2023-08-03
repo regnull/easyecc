@@ -18,5 +18,6 @@ func SerializedCompressedToAddress(key []byte) string {
 	if err != nil {
 		return "**invalid key**"
 	}
-	return publicKey.Address()
+	address, _ := publicKey.BitcoinAddress()
+	return address
 }

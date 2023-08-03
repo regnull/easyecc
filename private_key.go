@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ecdh"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
@@ -19,38 +21,111 @@ import (
 	"golang.org/x/crypto/scrypt"
 )
 
+const (
+	PBKDF2_ITER = 16384
+	PBKDF2_SIZE = 32
+)
+
+type EllipticCurve int
+
+const (
+	SECP256K1 EllipticCurve = 1
+	P256      EllipticCurve = 2
+	P384      EllipticCurve = 3
+	P521      EllipticCurve = 4
+)
+
+func getCurve(curve EllipticCurve) elliptic.Curve {
+	switch curve {
+	case SECP256K1:
+		return btcec.S256()
+	case P256:
+		return elliptic.P256()
+	case P384:
+		return elliptic.P384()
+	case P521:
+		return elliptic.P521()
+	}
+	return nil
+}
+
+func getKeyLength(curve EllipticCurve) int {
+	switch curve {
+	case SECP256K1:
+		return 32
+	case P256:
+		return 32
+	case P384:
+		return 48
+	case P521:
+		return 66
+	}
+	return -1
+}
+
 // PrivateKey represents elliptic cryptography private key.
 type PrivateKey struct {
 	privateKey *ecdsa.PrivateKey
 }
 
-// NewRandomPrivateKey creates a new random private key.
+// NewRandomPrivateKey creates a new random private key using SECP256K1 curve.
+//
+// Deprecated: Use GeneratePrivateKey instead.
 func NewRandomPrivateKey() (*PrivateKey, error) {
-	privateKey, err := ecdsa.GenerateKey(btcec.S256(), rand.Reader)
+	return GeneratePrivateKey(SECP256K1)
+}
+
+// NewRandomPrivateKeyByCurve creates a new random private key,
+// given a curve.
+func GeneratePrivateKey(curve EllipticCurve) (*PrivateKey, error) {
+	privateKey, err := ecdsa.GenerateKey(getCurve(curve), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate private key, %w", err)
 	}
 	return &PrivateKey{privateKey: privateKey}, nil
 }
 
-// NewPrivateKey returns new private key created from the secret.
+// NewPrivateKey returns new private key created from the secret using SECP256K1 curve.
+//
+// Deprecated: Use CreatePrivateKey instead.
 func NewPrivateKey(secret *big.Int) *PrivateKey {
+	return CreatePrivateKey(SECP256K1, secret)
+}
+
+// CreatePrivateKey creates a private key on the given curve from secret.
+func CreatePrivateKey(curve EllipticCurve, secret *big.Int) *PrivateKey {
 	privateKey := &ecdsa.PrivateKey{
 		D: secret}
-	privateKey.PublicKey.Curve = btcec.S256()
+	privateKey.PublicKey.Curve = getCurve(curve)
 	privateKey.PublicKey.X, privateKey.PublicKey.Y = privateKey.PublicKey.Curve.ScalarBaseMult(secret.Bytes())
 	return &PrivateKey{privateKey: privateKey}
 }
 
-// NewPrivateKeyFromPassword creates a new private key from password and salt.
+// NewPrivateKeyFromPassword creates a new private key from password and salt using SECP256K1 curve.
+//
+// Deprecated: Use CreatePrivateKeyFromPassword.
 func NewPrivateKeyFromPassword(password, salt []byte) *PrivateKey {
-	secret := pbkdf2.Key(password, salt, 16384, 32, sha256.New)
-	return NewPrivateKey(new(big.Int).SetBytes(secret))
+	return CreatePrivateKeyFromPassword(SECP256K1, password, salt)
 }
 
-// NewPrivateKeyFromEncryptedWithPassphrase creates a new private key from encrypted private key
-// using the passphrase.
+// CreatePrivateKeyFromPassword creates a private key on the given curve from password using PBKDF2 algorithm.
+func CreatePrivateKeyFromPassword(curve EllipticCurve, password, salt []byte) *PrivateKey {
+	secret := pbkdf2.Key(password, salt, PBKDF2_ITER, PBKDF2_SIZE, sha256.New)
+	return CreatePrivateKey(curve, new(big.Int).SetBytes(secret))
+}
+
+// NewPrivateKeyFromEncryptedWithPassphrase creates a new private key using SECP256K1 curve
+// from encrypted private key using the passphrase.
+//
+// Deprecated: Use CreatePrivateKeyFromEncrypted instead.
 func NewPrivateKeyFromEncryptedWithPassphrase(data []byte, passphrase string) (*PrivateKey, error) {
+	return CreatePrivateKeyFromEncrypted(SECP256K1, data, passphrase)
+}
+
+// CreatePrivateKeyFromEncrypted creates a private key from from encrypted private
+// key using the passphrase.
+func CreatePrivateKeyFromEncrypted(curve EllipticCurve, data []byte, passphrase string) (*PrivateKey,
+	error) {
 	if len(data) < 33 {
 		return nil, fmt.Errorf("invalid data")
 	}
@@ -73,12 +148,15 @@ func NewPrivateKeyFromEncryptedWithPassphrase(data []byte, passphrase string) (*
 		return nil, err
 	}
 	secret := new(big.Int).SetBytes(keyBytes)
-	return NewPrivateKey(secret), nil
+	return CreatePrivateKey(curve, secret), nil
 }
 
-// NewPrivateKeyFromFile loads private key from file and decrypts it using the given passphrase.
+// NewPrivateKeyFromFile loads private key using SECP256K1 curve
+// from file and decrypts it using the given passphrase.
 // If the passphrase is an empty string, no decryption is done (the file content is assumed
 // to be not encrypted).
+//
+// Deprecated: Use CreatePrivateKeyFromFile instead.
 func NewPrivateKeyFromFile(fileName string, passphrase string) (*PrivateKey, error) {
 	b, err := os.ReadFile(fileName)
 	if err != nil {
@@ -102,7 +180,28 @@ func NewPrivateKeyFromFile(fileName string, passphrase string) (*PrivateKey, err
 	return NewPrivateKey(secret), nil
 }
 
-// NewPrivateKeyFromMnemonic creates private key from a mnemonic phrase.
+// NewPrivateKeyFromFile loads private key using given curve
+// from file and decrypts it using the given passphrase.
+// If the passphrase is an empty string, no decryption is done (the file content is assumed
+// to be not encrypted).
+func CreatePrivateKeyFromFile(curve EllipticCurve, fileName string, passphrase string) (*PrivateKey, error) {
+	b, err := os.ReadFile(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load private key: %w", err)
+	}
+
+	if passphrase != "" {
+		return NewPrivateKeyFromEncryptedWithPassphrase(b, passphrase)
+	}
+
+	secret := new(big.Int)
+	secret.SetBytes(b)
+	return CreatePrivateKey(curve, secret), nil
+}
+
+// NewPrivateKeyFromMnemonic creates private key on SECP256K1 curve from a mnemonic phrase.
+//
+// Deprecated: Use CreateFromMnemonic instead.
 func NewPrivateKeyFromMnemonic(mnemonic string) (*PrivateKey, error) {
 	b, err := bip39.EntropyFromMnemonic(mnemonic)
 	if err != nil {
@@ -110,6 +209,16 @@ func NewPrivateKeyFromMnemonic(mnemonic string) (*PrivateKey, error) {
 	}
 	secret := new(big.Int).SetBytes(b)
 	return NewPrivateKey(secret), nil
+}
+
+// NewPrivateKeyFromMnemonic creates private key on given curve from a mnemonic phrase.
+func CreateFromMnemonic(curve EllipticCurve, mnemonic string) (*PrivateKey, error) {
+	b, err := bip39.EntropyFromMnemonic(mnemonic)
+	if err != nil {
+		return nil, err
+	}
+	secret := new(big.Int).SetBytes(b)
+	return CreatePrivateKey(curve, secret), nil
 }
 
 // Secret returns the private key's secret.
@@ -144,6 +253,23 @@ func (pk *PrivateKey) PublicKey() *PublicKey {
 	return &PublicKey{publicKey: &pk.privateKey.PublicKey}
 }
 
+// Curve returns the elliptic curve for this public key.
+func (pk *PrivateKey) Curve() EllipticCurve {
+	if pk.privateKey.Curve == btcec.S256() {
+		return SECP256K1
+	}
+	if pk.privateKey.Curve == elliptic.P256() {
+		return P256
+	}
+	if pk.privateKey.Curve == elliptic.P384() {
+		return P384
+	}
+	if pk.privateKey.Curve == elliptic.P521() {
+		return P521
+	}
+	return -1
+}
+
 // Sign signs the hash using the private key and returns signature.
 func (pk *PrivateKey) Sign(hash []byte) (*Signature, error) {
 	r, s, err := ecdsa.Sign(rand.Reader, pk.privateKey, hash)
@@ -164,7 +290,7 @@ func (pk *PrivateKey) GetSharedEncryptionKey(counterParty *PublicKey) []byte {
 }
 
 func encrypt(key []byte, content []byte) ([]byte, error) {
-	c, err := aes.NewCipher(key[:])
+	c, err := aes.NewCipher(key[:32]) // The key must be 32 bytes long.
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cipher: %w", err)
 	}
@@ -197,7 +323,7 @@ func (pk *PrivateKey) EncryptSymmetric(content []byte) ([]byte, error) {
 }
 
 func decrypt(key []byte, content []byte) ([]byte, error) {
-	c, err := aes.NewCipher(key)
+	c, err := aes.NewCipher(key[:32]) // The key must be 32 bytes long.
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cipher: %w", err)
 	}
@@ -281,6 +407,80 @@ func (pk *PrivateKey) ToECDSA() *ecdsa.PrivateKey {
 func (pk *PrivateKey) DecryptECIES(cyphertext []byte) ([]byte, error) {
 	k := ecies.NewPrivateKeyFromBytes(pk.privateKey.D.Bytes())
 	return ecies.Decrypt(k, cyphertext)
+}
+
+// GetECDHEncryptionKey returns a shared key that can be used to encrypt data
+// exchanged by two parties, using Elliptic Curve Diffie-Hellman algorithm (ECDH).
+// For Alice and Bob, the key is guaranteed to be the
+// same when it's derived from Alice's private key and Bob's public key or
+// Alice's public key and Bob's private key.
+//
+// See https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman.
+//
+// This function will return an error when it's used on SECP265K1 curve (because
+// it's considered less secure and not supported by crypto/ecdh package).
+func (pk *PrivateKey) GetECDHEncryptionKey(publicKey *PublicKey) ([]byte, error) {
+	var privateKey *ecdh.PrivateKey
+	var pubKey *ecdh.PublicKey
+	var err error
+	switch pk.Curve() {
+	case SECP256K1:
+		return nil, fmt.Errorf("cannot use ECDH for this curve")
+	case P256:
+		privateKey, err = ecdh.P256().NewPrivateKey(pk.Secret().Bytes())
+		if err != nil {
+			return nil, err
+		}
+		pubKey, err = ecdh.P256().NewPublicKey(publicKey.Serialize())
+		if err != nil {
+			return nil, err
+		}
+	case P384:
+		privateKey, err = ecdh.P384().NewPrivateKey(pk.Secret().Bytes())
+		if err != nil {
+			return nil, err
+		}
+		pubKey, err = ecdh.P384().NewPublicKey(publicKey.Serialize())
+		if err != nil {
+			return nil, err
+		}
+	case P521:
+		privateKey, err = ecdh.P521().NewPrivateKey(pk.Secret().Bytes())
+		if err != nil {
+			return nil, err
+		}
+		pubKey, err = ecdh.P521().NewPublicKey(publicKey.Serialize())
+		if err != nil {
+			return nil, err
+		}
+	}
+	encryptionKey, err := privateKey.ECDH(pubKey)
+	if err != nil {
+		return nil, err
+	}
+	return encryptionKey, nil
+}
+
+func (pk *PrivateKey) EncryptECDH(content []byte, publicKey *PublicKey) ([]byte, error) {
+	if pk.Curve() != publicKey.Curve() {
+		return nil, fmt.Errorf("the keys must be on the same curve")
+	}
+	encryptionKey, err := pk.GetECDHEncryptionKey(publicKey)
+	if err != nil {
+		return nil, err
+	}
+	return encrypt(encryptionKey, content)
+}
+
+func (pk *PrivateKey) DecryptECDH(content []byte, publicKey *PublicKey) ([]byte, error) {
+	if pk.Curve() != publicKey.Curve() {
+		return nil, fmt.Errorf("the keys must be on the same curve")
+	}
+	encryptionKey, err := pk.GetECDHEncryptionKey(publicKey)
+	if err != nil {
+		return nil, err
+	}
+	return decrypt(encryptionKey, content)
 }
 
 func deriveKey(password, salt []byte) ([]byte, []byte, error) {

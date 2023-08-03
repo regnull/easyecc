@@ -3,6 +3,7 @@ package easyecc
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"fmt"
 	"math/big"
 
@@ -17,9 +18,8 @@ type PublicKey struct {
 	publicKey *ecdsa.PublicKey
 }
 
-// NewPublicFromSerializedCompressed creates new public key from serialized
-// compressed format.
-func NewPublicFromSerializedCompressed(serialized []byte) (*PublicKey, error) {
+// We must deal with secp256k1 here, because elliptic UnmarshalCompressed cannot handle it.
+func unmarshalCompressedSECP256K1(serialized []byte) (*PublicKey, error) {
 	if len(serialized) != 33 {
 		return nil, fmt.Errorf("invalid serialized compressed public key")
 	}
@@ -60,29 +60,60 @@ func NewPublicFromSerializedCompressed(serialized []byte) (*PublicKey, error) {
 		Y:     y}}, nil
 }
 
+// NewPublicFromSerializedCompressed creates new public key from serialized
+// compressed format.
+func NewPublicFromSerializedCompressed(serialized []byte) (*PublicKey, error) {
+	return DeserializeCompressed(SECP256K1, serialized)
+}
+
+func Deserialize(curve EllipticCurve, serialized []byte) (*PublicKey, error) {
+	// if curve == SECP256K1 {
+	// 	return nil, fmt.Errorf("cannot deserialize on SECP256K1 curve")
+	// }
+	x, y := elliptic.Unmarshal(getCurve(curve), serialized)
+	return &PublicKey{publicKey: &ecdsa.PublicKey{
+		Curve: getCurve(curve),
+		X:     x,
+		Y:     y}}, nil
+}
+
+func DeserializeCompressed(curve EllipticCurve, serialized []byte) (*PublicKey, error) {
+	if curve == SECP256K1 {
+		// Special case - elliptic.UnmarshalCompressed cannot handle it.
+		return unmarshalCompressedSECP256K1(serialized)
+	}
+	x, y := elliptic.UnmarshalCompressed(getCurve(curve), serialized)
+	return &PublicKey{publicKey: &ecdsa.PublicKey{
+		Curve: getCurve(curve),
+		X:     x,
+		Y:     y}}, nil
+}
+
+func (pbk *PublicKey) Serialize() []byte {
+	return elliptic.Marshal(pbk.publicKey.Curve, pbk.publicKey.X, pbk.publicKey.Y)
+}
+
 // SerializeCompressed returns the private key serialized in SEC compressed format. The result
 // is 33 bytes long.
 func (pbk *PublicKey) SerializeCompressed() []byte {
-	buf := make([]byte, 33)
-	if new(big.Int).Mod(pbk.publicKey.Y, big.NewInt(2)).Cmp(big.NewInt(0)) == 0 {
-		// Even.
-		buf[0] = 0x02
-	} else {
-		// Odd.
-		buf[0] = 0x03
-	}
+	return elliptic.MarshalCompressed(pbk.publicKey.Curve, pbk.publicKey.X, pbk.publicKey.Y)
+}
 
-	yBytes := pbk.publicKey.X.Bytes()
-
-	// If lengths of yBytes happens to be less then 32, pad it with zero bytes on the left.
-	if len(yBytes) < 32 {
-		yBytes = bytes.Join([][]byte{make([]byte, 32-len(yBytes)), yBytes}, nil)
+// Curve returns the elliptic curve for this public key.
+func (pbk *PublicKey) Curve() EllipticCurve {
+	if pbk.publicKey.Curve == btcec.S256() {
+		return SECP256K1
 	}
-
-	for i := 1; i < 33; i++ {
-		buf[i] = yBytes[i-1]
+	if pbk.publicKey.Curve == elliptic.P256() {
+		return P256
 	}
-	return buf
+	if pbk.publicKey.Curve == elliptic.P384() {
+		return P384
+	}
+	if pbk.publicKey.Curve == elliptic.P521() {
+		return P521
+	}
+	return -1
 }
 
 // X returns X component of the public key.
@@ -95,20 +126,25 @@ func (pbk *PublicKey) Y() *big.Int {
 	return pbk.publicKey.Y
 }
 
-// Address returns Bitcoin address associated with this private key.
-func (pbk *PublicKey) Address() string {
+func (pbk *PublicKey) BitcoinAddress() (string, error) {
+	if pbk.Curve() != SECP256K1 {
+		return "", fmt.Errorf("can't get bitcoin address for this curve")
+	}
 	prefix := []byte{0x00}
 	s := pbk.SerializeCompressed()
 	hash := Hash160(s)
 	s1 := bytes.Join([][]byte{prefix, hash}, nil)
 	checkSum := Hash256(s1)[0:4]
 	addr := bytes.Join([][]byte{s1, checkSum}, nil)
-	return base58.Encode(addr)
+	return base58.Encode(addr), nil
 }
 
 // EthereumAddress returns an Ethereum address for this public key.
-func (pbk *PublicKey) EthereumAddress() string {
-	return crypto.PubkeyToAddress(*pbk.publicKey).Hex()
+func (pbk *PublicKey) EthereumAddress() (string, error) {
+	if pbk.Curve() != SECP256K1 {
+		return "", fmt.Errorf("can't get bitcoin address for this curve")
+	}
+	return crypto.PubkeyToAddress(*pbk.publicKey).Hex(), nil
 }
 
 // Equal returns true if this key is equal to the other key.

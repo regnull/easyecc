@@ -1,7 +1,7 @@
 package easyecc
 
 import (
-	"io/ioutil"
+	"bytes"
 	"math/big"
 	"math/rand"
 	"os"
@@ -11,55 +11,62 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var curves = []EllipticCurve{SECP256K1, P256, P384, P521}
+
 func Test_PrivateKey_NewRandom(t *testing.T) {
 	assert := assert.New(t)
 
-	pk, err := NewRandomPrivateKey()
-	assert.NoError(err)
-	assert.NotNil(pk)
+	for _, curve := range curves {
+		pk, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
+		assert.NotNil(pk)
+	}
 }
 
 func Test_PrivateKey_Save(t *testing.T) {
 	assert := assert.New(t)
 
-	pk, err := NewRandomPrivateKey()
-	assert.NoError(err)
+	for _, curve := range curves {
+		pk, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
 
-	dir, err := ioutil.TempDir("", "pktest")
-	assert.NoError(err)
+		dir, err := os.MkdirTemp("", "pktest")
+		assert.NoError(err)
 
-	fileName := path.Join(dir, "private_key")
-	err = pk.Save(fileName, "")
-	assert.NoError(err)
+		fileName := path.Join(dir, "private_key")
+		err = pk.Save(fileName, "")
+		assert.NoError(err)
 
-	fi, err := os.Stat(fileName)
-	assert.NoError(err)
-	assert.EqualValues(32, fi.Size())
+		_, err = os.Stat(fileName)
+		assert.NoError(err)
 
-	assert.NoError(os.RemoveAll(dir))
+		assert.NoError(os.RemoveAll(dir))
+	}
 }
 
 func Test_PrivateKey_Load(t *testing.T) {
 	assert := assert.New(t)
 
-	pk, err := NewRandomPrivateKey()
-	assert.NoError(err)
+	for _, curve := range curves {
+		pk, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
 
-	dir, err := ioutil.TempDir("", "pktest")
-	assert.NoError(err)
+		dir, err := os.MkdirTemp("", "pktest")
+		assert.NoError(err)
 
-	fileName := path.Join(dir, "private_key")
-	err = pk.Save(fileName, "")
-	assert.NoError(err)
+		fileName := path.Join(dir, "private_key")
+		err = pk.Save(fileName, "")
+		assert.NoError(err)
 
-	pkCopy, err := NewPrivateKeyFromFile(fileName, "")
-	assert.NoError(err)
-	assert.NotNil(pkCopy)
-	assert.EqualValues(pk.privateKey.D, pkCopy.privateKey.D)
-	assert.EqualValues(pk.privateKey.PublicKey.X, pkCopy.privateKey.PublicKey.X)
-	assert.EqualValues(pk.privateKey.PublicKey.Y, pkCopy.privateKey.PublicKey.Y)
+		pkCopy, err := CreatePrivateKeyFromFile(curve, fileName, "")
+		assert.NoError(err)
+		assert.NotNil(pkCopy)
+		assert.EqualValues(pk.privateKey.D, pkCopy.privateKey.D)
+		assert.EqualValues(pk.privateKey.PublicKey.X, pkCopy.privateKey.PublicKey.X)
+		assert.EqualValues(pk.privateKey.PublicKey.Y, pkCopy.privateKey.PublicKey.Y)
 
-	assert.NoError(os.RemoveAll(dir))
+		assert.NoError(os.RemoveAll(dir))
+	}
 }
 
 func Test_PrivateKey_SerializeDeserialize(t *testing.T) {
@@ -129,7 +136,7 @@ func Test_PrivateKey_PadOnSave(t *testing.T) {
 
 	key := NewPrivateKey(big.NewInt(123))
 
-	dir, err := ioutil.TempDir("", "pktest")
+	dir, err := os.MkdirTemp("", "pktest")
 	assert.NoError(err)
 
 	fileName := path.Join(dir, "private_key")
@@ -146,4 +153,37 @@ func Test_PrivateKey_PadOnSave(t *testing.T) {
 	assert.True(key.Equal(key1))
 
 	assert.NoError(os.RemoveAll(dir))
+}
+
+func Test_PrivateKey_Curve(t *testing.T) {
+	assert := assert.New(t)
+
+	for _, curve := range curves {
+		key, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
+		assert.Equal(curve, key.Curve())
+	}
+}
+
+func Test_PrivateKey_EncryptECDH(t *testing.T) {
+	assert := assert.New(t)
+
+	for _, curve := range curves {
+		if curve == SECP256K1 {
+			// Not supported by crypto/ecdh.
+			continue
+		}
+		aliceKey, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
+		bobKey, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
+
+		message := "Putin Huylo"
+		encrypted, err := aliceKey.EncryptECDH([]byte(message), bobKey.PublicKey())
+		assert.NoError(err)
+		decrypted, err := bobKey.DecryptECDH(encrypted, aliceKey.PublicKey())
+		assert.NoError(err)
+
+		assert.True(bytes.Equal([]byte(message), decrypted))
+	}
 }
