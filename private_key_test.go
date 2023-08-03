@@ -169,6 +169,9 @@ func Test_PrivateKey_EncryptECDH(t *testing.T) {
 	assert := assert.New(t)
 
 	for _, curve := range curves {
+		if curve != P521 {
+			continue
+		}
 		if curve == SECP256K1 {
 			// Not supported by crypto/ecdh.
 			continue

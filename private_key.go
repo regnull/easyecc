@@ -75,7 +75,7 @@ func NewRandomPrivateKey() (*PrivateKey, error) {
 	return GeneratePrivateKey(SECP256K1)
 }
 
-// NewRandomPrivateKeyByCurve creates a new random private key,
+// GeneratePrivateKey creates a new random private key,
 // given a curve.
 func GeneratePrivateKey(curve EllipticCurve) (*PrivateKey, error) {
 	privateKey, err := ecdsa.GenerateKey(getCurve(curve), rand.Reader)
@@ -409,6 +409,13 @@ func (pk *PrivateKey) DecryptECIES(cyphertext []byte) ([]byte, error) {
 	return ecies.Decrypt(k, cyphertext)
 }
 
+func padWithZeros(b []byte, l int) []byte {
+	for len(b) < l {
+		b = append([]byte{0}, b...)
+	}
+	return b
+}
+
 // GetECDHEncryptionKey returns a shared key that can be used to encrypt data
 // exchanged by two parties, using Elliptic Curve Diffie-Hellman algorithm (ECDH).
 // For Alice and Bob, the key is guaranteed to be the
@@ -420,6 +427,9 @@ func (pk *PrivateKey) DecryptECIES(cyphertext []byte) ([]byte, error) {
 // This function will return an error when it's used on SECP265K1 curve (because
 // it's considered less secure and not supported by crypto/ecdh package).
 func (pk *PrivateKey) GetECDHEncryptionKey(publicKey *PublicKey) ([]byte, error) {
+	if pk.Curve() != publicKey.Curve() {
+		return nil, fmt.Errorf("the keys must be on the same curve")
+	}
 	var privateKey *ecdh.PrivateKey
 	var pubKey *ecdh.PublicKey
 	var err error
@@ -427,7 +437,8 @@ func (pk *PrivateKey) GetECDHEncryptionKey(publicKey *PublicKey) ([]byte, error)
 	case SECP256K1:
 		return nil, fmt.Errorf("cannot use ECDH for this curve")
 	case P256:
-		privateKey, err = ecdh.P256().NewPrivateKey(pk.Secret().Bytes())
+		key := padWithZeros(pk.Secret().Bytes(), getKeyLength(pk.Curve()))
+		privateKey, err = ecdh.P256().NewPrivateKey(key)
 		if err != nil {
 			return nil, err
 		}
@@ -436,7 +447,8 @@ func (pk *PrivateKey) GetECDHEncryptionKey(publicKey *PublicKey) ([]byte, error)
 			return nil, err
 		}
 	case P384:
-		privateKey, err = ecdh.P384().NewPrivateKey(pk.Secret().Bytes())
+		key := padWithZeros(pk.Secret().Bytes(), getKeyLength(pk.Curve()))
+		privateKey, err = ecdh.P384().NewPrivateKey(key)
 		if err != nil {
 			return nil, err
 		}
@@ -445,7 +457,8 @@ func (pk *PrivateKey) GetECDHEncryptionKey(publicKey *PublicKey) ([]byte, error)
 			return nil, err
 		}
 	case P521:
-		privateKey, err = ecdh.P521().NewPrivateKey(pk.Secret().Bytes())
+		key := padWithZeros(pk.Secret().Bytes(), getKeyLength(pk.Curve()))
+		privateKey, err = ecdh.P521().NewPrivateKey(key)
 		if err != nil {
 			return nil, err
 		}
@@ -462,9 +475,6 @@ func (pk *PrivateKey) GetECDHEncryptionKey(publicKey *PublicKey) ([]byte, error)
 }
 
 func (pk *PrivateKey) EncryptECDH(content []byte, publicKey *PublicKey) ([]byte, error) {
-	if pk.Curve() != publicKey.Curve() {
-		return nil, fmt.Errorf("the keys must be on the same curve")
-	}
 	encryptionKey, err := pk.GetECDHEncryptionKey(publicKey)
 	if err != nil {
 		return nil, err
@@ -473,9 +483,6 @@ func (pk *PrivateKey) EncryptECDH(content []byte, publicKey *PublicKey) ([]byte,
 }
 
 func (pk *PrivateKey) DecryptECDH(content []byte, publicKey *PublicKey) ([]byte, error) {
-	if pk.Curve() != publicKey.Curve() {
-		return nil, fmt.Errorf("the keys must be on the same curve")
-	}
 	encryptionKey, err := pk.GetECDHEncryptionKey(publicKey)
 	if err != nil {
 		return nil, err
