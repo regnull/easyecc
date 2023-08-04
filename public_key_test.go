@@ -128,3 +128,22 @@ func Test_PublicKey_ToECDSA(t *testing.T) {
 		assert.NotNil(privateKey.PublicKey().ToECDSA())
 	}
 }
+
+func Test_PublicKey_BitcoinEthereumAddress(t *testing.T) {
+	assert := assert.New(t)
+
+	privateKey := CreatePrivateKey(SECP256K1, big.NewInt(12345))
+	publicKey := privateKey.PublicKey()
+	bitcoinAddress, err := publicKey.BitcoinAddress()
+	assert.NoError(err)
+	assert.Equal("12vieiAHxBe4qCUrwvfb2kRkDuc8kQ2VZ2", bitcoinAddress)
+	ethereumAddress, err := publicKey.EthereumAddress()
+	assert.NoError(err)
+	assert.Equal("0xEB4665750b1382DF4AeBF49E04B429AAAc4d9929", ethereumAddress)
+
+	wrongCurveKey := CreatePrivateKey(P521, big.NewInt(12345))
+	_, err = wrongCurveKey.PublicKey().BitcoinAddress()
+	assert.Equal(ErrUnsupportedCurve, err)
+	_, err = wrongCurveKey.PublicKey().EthereumAddress()
+	assert.Equal(ErrUnsupportedCurve, err)
+}

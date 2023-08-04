@@ -241,7 +241,10 @@ func Test_PrivateKey_EncryptLegacy(t *testing.T) {
 	spongeBobKey, err := GeneratePrivateKey(P521)
 	assert.NoError(err)
 	encrypted, err = spongeBobKey.Encrypt([]byte(message), bobKey.PublicKey())
-	assert.Error(err)
+	assert.Equal(ErrUnsupportedCurve, err)
+
+	decrypted, err = spongeBobKey.Decrypt(encrypted, aliceKey.PublicKey())
+	assert.Equal(ErrUnsupportedCurve, err)
 }
 
 func Test_PrivateKey_ToECDSA(t *testing.T) {

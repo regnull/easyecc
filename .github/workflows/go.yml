@@ -38,6 +38,14 @@ jobs:
       with:
         green: 80
         filename: coverage.out
+    
+    - name: Install goveralls
+      run: go install github.com/mattn/goveralls@latest
+    
+    - name: Send coverage
+      env:
+        COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+      run: goveralls -coverprofile=covprofile -service=github
 
     - uses: stefanzweifel/git-auto-commit-action@v4
       id: auto-commit-action
