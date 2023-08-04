@@ -2,6 +2,7 @@ package easyecc
 
 import (
 	"bytes"
+	"crypto/elliptic"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -13,6 +14,20 @@ import (
 )
 
 var curves = []EllipticCurve{SECP256K1, P256, P384, P521}
+
+func Test_PrivateKey_getCurve(t *testing.T) {
+	assert := assert.New(t)
+
+	assert.Equal(elliptic.P256(), getCurve(P256))
+	assert.Nil(getCurve(EllipticCurve(999)))
+}
+
+func Test_PrivateKey_getKeyLength(t *testing.T) {
+	assert := assert.New(t)
+
+	assert.Equal(32, getKeyLength(P256))
+	assert.Equal(-1, getKeyLength(EllipticCurve(999)))
+}
 
 func Test_PrivateKey_NewRandom(t *testing.T) {
 	assert := assert.New(t)
@@ -68,6 +83,13 @@ func Test_PrivateKey_SaveWithPassphrase(t *testing.T) {
 
 		assert.NoError(os.RemoveAll(dir))
 	}
+}
+
+func Test_PrivateKey_LoadFromBadFile(t *testing.T) {
+	assert := assert.New(t)
+
+	_, err := CreatePrivateKeyFromFile(P256, "some-none-existing-file", "foo")
+	assert.Error(err)
 }
 
 func Test_PrivateKey_Load(t *testing.T) {
@@ -139,6 +161,10 @@ func Test_PrivateKey_FromPassword(t *testing.T) {
 		key := CreatePrivateKeyFromPassword(curve, []byte("super secret spies"), []byte{0x11, 0x22, 0x33, 0x44})
 		assert.NotNil(key)
 	}
+
+	// Deprecated function.
+	key := NewPrivateKeyFromPassword([]byte("super secret spies"), []byte{0x11, 0x22, 0x33, 0x44})
+	assert.NotNil(key)
 }
 
 func Test_PrivateKey_NewPrivateKeyFromEncryptedWithPassphrase_InvalidData(t *testing.T) {
@@ -165,6 +191,25 @@ func Test_PrivateKey_Mnemonic(t *testing.T) {
 
 		assert.True(key.Equal(key1))
 	}
+
+	// Try unsupported curve.
+	_, err := CreatePrivateKeyFromMnemonic(P521, "foo bar baz")
+	assert.Equal(ErrUnsupportedCurve, err)
+
+	// Try bad mnemonic.
+	_, err = CreatePrivateKeyFromMnemonic(SECP256K1, "foo bar baz")
+	assert.Error(err)
+
+	// Deprecated function.
+	key, err := GeneratePrivateKey(SECP256K1)
+	assert.NoError(err)
+	mnemonic, err := key.Mnemonic()
+	assert.NoError(err)
+
+	key1, err := NewPrivateKeyFromMnemonic(mnemonic)
+	assert.NoError(err)
+
+	assert.True(key.Equal(key1))
 }
 
 func Test_PrivateKey_PadOnSave(t *testing.T) {
@@ -243,7 +288,7 @@ func Test_PrivateKey_EncryptLegacy(t *testing.T) {
 	encrypted, err = spongeBobKey.Encrypt([]byte(message), bobKey.PublicKey())
 	assert.Equal(ErrUnsupportedCurve, err)
 
-	decrypted, err = spongeBobKey.Decrypt(encrypted, aliceKey.PublicKey())
+	_, err = spongeBobKey.Decrypt(encrypted, aliceKey.PublicKey())
 	assert.Equal(ErrUnsupportedCurve, err)
 }
 
