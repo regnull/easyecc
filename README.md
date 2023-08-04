@@ -35,7 +35,7 @@ const (
 
 Use them when creating keys.
 
-Sign hash and verify signature:
+Sign hash and verify signature (Using [ECDSA](https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm)):
 
 ```Go
 	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
@@ -51,7 +51,7 @@ Sign hash and verify signature:
 	// Output: Signature verified: true
 ```
 
-Encrypt data so only the owner of the private key can decrypt it:
+Encrypt data so only the owner of the private key can decrypt it (Using [ECDH](https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman)):
 
 ```Go
 	aliceKey, err := GeneratePrivateKey(P256)
@@ -76,6 +76,7 @@ Encrypt data so only the owner of the private key can decrypt it:
 ```
 
 Encrypt private key with passphrase:
+
 ```Go
 	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
 	encryptedKey, err := privateKey.EncryptKeyWithPassphrase("my passphrase")
@@ -88,6 +89,7 @@ Encrypt private key with passphrase:
 ```
 
 Convert public key to the serialized compressed representation:
+
 ```Go
 	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
 	publicKey := privateKey.PublicKey()
