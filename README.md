@@ -35,7 +35,7 @@ const (
 
 Use them when creating keys.
 
-Sign hash and verify signature (Using [ECDSA](https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm)):
+## Sign hash and verify signature (Using [ECDSA](https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm))
 
 ```Go
 privateKey := CreatePrivateKey(P256, big.NewInt(12345))
@@ -51,7 +51,7 @@ fmt.Printf("Signature verified: %v\n", success)
 // Output: Signature verified: true
 ```
 
-Encrypt data so only the owner of the private key can decrypt it (Using [ECDH](https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman)):
+## Encrypt with shared secret (Using [ECDH](https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman)):
 
 ```Go
 aliceKey, err := GeneratePrivateKey(P256)
@@ -75,7 +75,7 @@ fmt.Printf("%s\n", string(decrypted))
 // Output: super secret message
 ```
 
-Encrypt private key with passphrase:
+## Encrypt private key with passphrase
 
 ```Go
 privateKey := CreatePrivateKey(P256, big.NewInt(12345))
@@ -88,7 +88,7 @@ fmt.Printf("%d\n", decryptedKey.Secret())
 // Output: 12345
 ```
 
-Convert public key to the serialized compressed representation:
+## Serialize Public Key
 
 ```Go
 privateKey := CreatePrivateKey(P256, big.NewInt(12345))
@@ -105,7 +105,7 @@ fmt.Printf("the correct key was created: %v\n", sameKey)
 // the correct key was created: true
 ```
 
-Getting Bitcoin and Ethereum addresses:
+## Getting Bitcoin and Ethereum addresses:
 ```Go
 // BitcoinAddress and EthereumAddress only work for secp256k1 curve.
 privateKey := CreatePrivateKey(SECP256K1, big.NewInt(12345))
