@@ -181,8 +181,7 @@ func Test_PrivateKey_Mnemonic(t *testing.T) {
 	assert := assert.New(t)
 
 	for _, curve := range []EllipticCurve{SECP256K1, P256} {
-		key, err := GeneratePrivateKey(curve)
-		assert.NoError(err)
+		key := CreatePrivateKey(curve, big.NewInt(123456))
 		mnemonic, err := key.Mnemonic()
 		assert.NoError(err)
 
@@ -201,8 +200,7 @@ func Test_PrivateKey_Mnemonic(t *testing.T) {
 	assert.Error(err)
 
 	// Deprecated function.
-	key, err := GeneratePrivateKey(SECP256K1)
-	assert.NoError(err)
+	key := CreatePrivateKey(SECP256K1, big.NewInt(123456))
 	mnemonic, err := key.Mnemonic()
 	assert.NoError(err)
 

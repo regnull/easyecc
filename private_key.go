@@ -324,7 +324,7 @@ func (pk *PrivateKey) Mnemonic() (string, error) {
 	if pk.Curve() != SECP256K1 && pk.Curve() != P256 {
 		return "", ErrUnsupportedCurve
 	}
-	return bip39.NewMnemonic(pk.privateKey.D.Bytes())
+	return bip39.NewMnemonic(padWithZeros(pk.privateKey.D.Bytes(), 32))
 }
 
 // Equal returns true if this key is equal to the other key.
