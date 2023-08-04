@@ -49,6 +49,9 @@ func ExamplePrivateKey_EncryptKeyWithPassphrase() {
 		log.Fatal(err)
 	}
 	decryptedKey, err := CreatePrivateKeyFromEncrypted(P256, encryptedKey, "my passphrase")
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf("%d\n", decryptedKey.Secret())
 	// Output: 12345
 }

@@ -44,6 +44,33 @@ func Test_PrivateKey_Save(t *testing.T) {
 	}
 }
 
+func Test_PrivateKey_SaveWithPassphrase(t *testing.T) {
+	assert := assert.New(t)
+
+	passphrase := "super secret password"
+	for _, curve := range curves {
+		pk, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
+
+		dir, err := os.MkdirTemp("", "pktest")
+		assert.NoError(err)
+
+		fileName := path.Join(dir, "private_key")
+		err = pk.Save(fileName, passphrase)
+		assert.NoError(err)
+
+		_, err = os.Stat(fileName)
+		assert.NoError(err)
+
+		loadedPk, err := CreatePrivateKeyFromFile(curve, fileName, passphrase)
+		assert.NoError(err)
+		assert.NotNil(loadedPk)
+		assert.True(pk.Equal(loadedPk))
+
+		assert.NoError(os.RemoveAll(dir))
+	}
+}
+
 func Test_PrivateKey_Load(t *testing.T) {
 	assert := assert.New(t)
 
@@ -134,7 +161,7 @@ func Test_PrivateKey_Mnemonic(t *testing.T) {
 		mnemonic, err := key.Mnemonic()
 		assert.NoError(err)
 
-		key1, err := NewPrivateKeyFromMnemonic(mnemonic)
+		key1, err := CreatePrivateKeyFromMnemonic(curve, mnemonic)
 		assert.NoError(err)
 
 		assert.True(key.Equal(key1))
