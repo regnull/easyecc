@@ -62,27 +62,36 @@ func Test_PrivateKey_SaveWithPassphrase(t *testing.T) {
 	assert := assert.New(t)
 
 	passphrase := "super secret password"
+	dir, err := os.MkdirTemp("", "pktest")
+	assert.NoError(err)
 	for _, curve := range curves {
 		pk, err := GeneratePrivateKey(curve)
 		assert.NoError(err)
 
-		dir, err := os.MkdirTemp("", "pktest")
-		assert.NoError(err)
-
-		fileName := path.Join(dir, "private_key")
+		fileName := path.Join(dir, fmt.Sprintf("private_key_%v", curve))
 		err = pk.Save(fileName, passphrase)
 		assert.NoError(err)
 
 		_, err = os.Stat(fileName)
 		assert.NoError(err)
 
+		if curve == SECP256K1 {
+			// Test deprecated function.
+			loadedPk, err := NewPrivateKeyFromFile(fileName, passphrase)
+			assert.NoError(err)
+			assert.NotNil(loadedPk)
+		}
+
 		loadedPk, err := CreatePrivateKeyFromFile(curve, fileName, passphrase)
 		assert.NoError(err)
 		assert.NotNil(loadedPk)
 		assert.True(pk.Equal(loadedPk))
-
-		assert.NoError(os.RemoveAll(dir))
 	}
+	assert.NoError(os.RemoveAll(dir))
+
+	// Test deprecated function.
+	_, err = NewPrivateKeyFromFile("some-non-existent-file", "foo")
+	assert.Error(err)
 }
 
 func Test_PrivateKey_LoadFromBadFile(t *testing.T) {
@@ -213,7 +222,7 @@ func Test_PrivateKey_Mnemonic(t *testing.T) {
 func Test_PrivateKey_PadOnSave(t *testing.T) {
 	assert := assert.New(t)
 
-	key := NewPrivateKey(big.NewInt(123))
+	key := CreatePrivateKey(SECP256K1, big.NewInt(123))
 
 	dir, err := os.MkdirTemp("", "pktest")
 	assert.NoError(err)
@@ -226,7 +235,7 @@ func Test_PrivateKey_PadOnSave(t *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(32, fi.Size())
 
-	key1, err := NewPrivateKeyFromFile(fileName, "")
+	key1, err := CreatePrivateKeyFromFile(SECP256K1, fileName, "")
 	assert.NoError(err)
 
 	assert.True(key.Equal(key1))
