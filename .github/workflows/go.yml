@@ -42,10 +42,14 @@ jobs:
     - name: Install goveralls
       run: go install github.com/mattn/goveralls@latest
     
+    - name: Run Unit tests for goveralls
+      run: |
+        go test -race -covermode atomic -coverprofile=covprofile ./...
+
     - name: Send coverage
       env:
         COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: goveralls -coverprofile=coverage.out -service=github
+      run: goveralls -coverprofile=covprofile -service=github
 
     - uses: stefanzweifel/git-auto-commit-action@v4
       id: auto-commit-action
