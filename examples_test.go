@@ -67,3 +67,21 @@ func ExamplePublicKey_SerializeCompressed() {
 	// Output: 0226efcebd0ee9e34a669187e18b3a9122b2f733945b649cc9f9f921e9f9dad812
 	// the correct key was created: true
 }
+
+func ExamplePublicKey_BitcoinAndEthereumAddress() {
+	// BitcoinAddress and EthereumAddress only work for secp256k1 curve.
+	privateKey := CreatePrivateKey(SECP256K1, big.NewInt(12345))
+	publicKey := privateKey.PublicKey()
+	bitcoinAddress, err := publicKey.BitcoinAddress()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Bitcoin address: %s\n", bitcoinAddress)
+	ethereumAddress, err := publicKey.EthereumAddress()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Ethereum address: %s\n", ethereumAddress)
+	// Output: Bitcoin address: 12vieiAHxBe4qCUrwvfb2kRkDuc8kQ2VZ2
+	// Ethereum address: 0xEB4665750b1382DF4AeBF49E04B429AAAc4d9929
+}

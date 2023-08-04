@@ -36,7 +36,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	bobPrivateKey, err := GeneratePrivateKey(P256)
 	assert.NoError(err)
 
-	message := "a"
+	message := "All that we are is the result of what we have thought"
 	ciphertext, err := alicePrivateKey.EncryptECDH([]byte(message), bobPrivateKey.PublicKey())
 	assert.NoError(err)
 

@@ -76,14 +76,16 @@ func Test_PrivateKey_SerializeDeserialize(t *testing.T) {
 	// Serialize/deserialize a bunch of keys.
 
 	r := rand.New(rand.NewSource(123))
-	for i := 0; i < 1000; i++ {
-		secret := r.Int63()
-		privateKey := NewPrivateKey(big.NewInt(secret))
-		serialized := privateKey.PublicKey().SerializeCompressed()
-		publicKey, err := NewPublicFromSerializedCompressed(serialized)
-		assert.NoError(err)
-		assert.Equal(privateKey.PublicKey().publicKey.X, publicKey.publicKey.X)
-		assert.Equal(privateKey.PublicKey().publicKey.Y, publicKey.publicKey.Y)
+	for _, curve := range curves {
+		for i := 0; i < 1000; i++ {
+			secret := r.Int63()
+			privateKey := CreatePrivateKey(curve, big.NewInt(secret))
+			serialized := privateKey.PublicKey().SerializeCompressed()
+			publicKey, err := DeserializeCompressed(curve, serialized)
+			assert.NoError(err)
+			assert.Equal(privateKey.PublicKey().publicKey.X, publicKey.publicKey.X)
+			assert.Equal(privateKey.PublicKey().publicKey.Y, publicKey.publicKey.Y)
+		}
 	}
 }
 

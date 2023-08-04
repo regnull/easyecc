@@ -128,7 +128,7 @@ func (pbk *PublicKey) Y() *big.Int {
 
 func (pbk *PublicKey) BitcoinAddress() (string, error) {
 	if pbk.Curve() != SECP256K1 {
-		return "", fmt.Errorf("can't get bitcoin address for this curve")
+		return "", ErrUnsupportedCurve
 	}
 	prefix := []byte{0x00}
 	s := pbk.SerializeCompressed()
@@ -142,7 +142,7 @@ func (pbk *PublicKey) BitcoinAddress() (string, error) {
 // EthereumAddress returns an Ethereum address for this public key.
 func (pbk *PublicKey) EthereumAddress() (string, error) {
 	if pbk.Curve() != SECP256K1 {
-		return "", fmt.Errorf("can't get bitcoin address for this curve")
+		return "", ErrUnsupportedCurve
 	}
 	return crypto.PubkeyToAddress(*pbk.publicKey).Hex(), nil
 }
