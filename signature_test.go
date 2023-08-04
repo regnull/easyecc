@@ -11,12 +11,14 @@ func Test_SignAndVerify(t *testing.T) {
 	assert := assert.New(t)
 
 	data := []byte("hello there")
-	for i := 0; i < 1000; i++ {
-		hash := sha256.Sum256(data)
-		pkey, err := NewRandomPrivateKey()
-		assert.NoError(err)
-		sig, err := pkey.Sign(hash[:])
-		assert.NoError(err)
-		assert.True(sig.Verify(pkey.PublicKey(), hash[:]))
+	for _, curve := range curves {
+		for i := 0; i < 100; i++ {
+			hash := sha256.Sum256(data)
+			pkey, err := GeneratePrivateKey(curve)
+			assert.NoError(err)
+			sig, err := pkey.Sign(hash[:])
+			assert.NoError(err)
+			assert.True(sig.Verify(pkey.PublicKey(), hash[:]))
+		}
 	}
 }

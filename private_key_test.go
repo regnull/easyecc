@@ -2,6 +2,7 @@ package easyecc
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"os"
@@ -26,22 +27,20 @@ func Test_PrivateKey_NewRandom(t *testing.T) {
 func Test_PrivateKey_Save(t *testing.T) {
 	assert := assert.New(t)
 
+	dir, err := os.MkdirTemp("", "pktest")
+	assert.NoError(err)
 	for _, curve := range curves {
 		pk, err := GeneratePrivateKey(curve)
 		assert.NoError(err)
 
-		dir, err := os.MkdirTemp("", "pktest")
-		assert.NoError(err)
-
-		fileName := path.Join(dir, "private_key")
+		fileName := path.Join(dir, fmt.Sprintf("private_key_%v", curve))
 		err = pk.Save(fileName, "")
 		assert.NoError(err)
 
 		_, err = os.Stat(fileName)
 		assert.NoError(err)
-
-		assert.NoError(os.RemoveAll(dir))
 	}
+	assert.NoError(os.RemoveAll(dir))
 }
 
 func Test_PrivateKey_SaveWithPassphrase(t *testing.T) {
@@ -218,5 +217,39 @@ func Test_PrivateKey_EncryptECDH(t *testing.T) {
 		assert.NoError(err)
 
 		assert.True(bytes.Equal([]byte(message), decrypted))
+	}
+}
+
+func Test_PrivateKey_EncryptLegacy(t *testing.T) {
+	assert := assert.New(t)
+
+	curve := SECP256K1 // Legacy encryption works only on this curve.
+	aliceKey, err := GeneratePrivateKey(curve)
+	assert.NoError(err)
+	bobKey, err := GeneratePrivateKey(curve)
+	assert.NoError(err)
+
+	message := "Putin Huylo"
+	encrypted, err := aliceKey.Encrypt([]byte(message), bobKey.PublicKey())
+	assert.NoError(err)
+	decrypted, err := bobKey.Decrypt(encrypted, aliceKey.PublicKey())
+	assert.NoError(err)
+
+	assert.True(bytes.Equal([]byte(message), decrypted))
+
+	// Try unsupported curve.
+	spongeBobKey, err := GeneratePrivateKey(P521)
+	assert.NoError(err)
+	encrypted, err = spongeBobKey.Encrypt([]byte(message), bobKey.PublicKey())
+	assert.Error(err)
+}
+
+func Test_PrivateKey_ToECDSA(t *testing.T) {
+	assert := assert.New(t)
+
+	for _, curve := range curves {
+		privateKey, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
+		assert.NotNil(privateKey.ToECDSA())
 	}
 }

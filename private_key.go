@@ -496,12 +496,7 @@ func NewPrivateKeyFromFile(fileName string, passphrase string) (*PrivateKey, err
 //
 // Deprecated: Use CreatePrivateKeyFromMnemonic instead.
 func NewPrivateKeyFromMnemonic(mnemonic string) (*PrivateKey, error) {
-	b, err := bip39.EntropyFromMnemonic(mnemonic)
-	if err != nil {
-		return nil, err
-	}
-	secret := new(big.Int).SetBytes(b)
-	return NewPrivateKey(secret), nil
+	return CreatePrivateKeyFromMnemonic(SECP256K1, mnemonic)
 }
 
 // Encrypt encrypts content with a shared key derived from this private key and the

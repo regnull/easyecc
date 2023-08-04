@@ -118,3 +118,13 @@ func Test_PublicKey_SerializeSECP256K1(t *testing.T) {
 
 	assert.True(publicKey.Equal(key.PublicKey()))
 }
+
+func Test_PublicKey_ToECDSA(t *testing.T) {
+	assert := assert.New(t)
+
+	for _, curve := range curves {
+		privateKey, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
+		assert.NotNil(privateKey.PublicKey().ToECDSA())
+	}
+}

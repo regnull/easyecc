@@ -9,7 +9,6 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/base58"
-	ecies "github.com/ecies/go"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -165,14 +164,4 @@ func (pbk *PublicKey) EqualSerializedCompressed(other []byte) bool {
 // ToECDSA returns this key as crypto/ecdsa public key.
 func (pbk *PublicKey) ToECDSA() *ecdsa.PublicKey {
 	return pbk.publicKey
-}
-
-// EncryptECIES encrypts plaintext using Elliptic Curve Integrated Encryption Scheme.
-// See https://cryptopp.com/wiki/Elliptic_Curve_Integrated_Encryption_Scheme
-func (pbk *PublicKey) EncryptECIES(plaintext []byte) ([]byte, error) {
-	k, err := ecies.NewPublicKeyFromBytes(pbk.SerializeCompressed())
-	if err != nil {
-		return nil, err
-	}
-	return ecies.Encrypt(k, plaintext)
 }
