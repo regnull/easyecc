@@ -104,16 +104,22 @@ func Test_PrivateKey_LoadFromBadFile(t *testing.T) {
 func Test_PrivateKey_Load(t *testing.T) {
 	assert := assert.New(t)
 
+	dir, err := os.MkdirTemp("", "pktest")
+	assert.NoError(err)
 	for _, curve := range curves {
 		pk, err := GeneratePrivateKey(curve)
 		assert.NoError(err)
 
-		dir, err := os.MkdirTemp("", "pktest")
-		assert.NoError(err)
-
-		fileName := path.Join(dir, "private_key")
+		fileName := path.Join(dir, fmt.Sprintf("private_key_%v", curve))
 		err = pk.Save(fileName, "")
 		assert.NoError(err)
+
+		if curve == SECP256K1 {
+			// Test the deprecated function.
+			pkCopy, err := NewPrivateKeyFromFile(fileName, "")
+			assert.NoError(err)
+			assert.NotNil(pkCopy)
+		}
 
 		pkCopy, err := CreatePrivateKeyFromFile(curve, fileName, "")
 		assert.NoError(err)
@@ -121,9 +127,8 @@ func Test_PrivateKey_Load(t *testing.T) {
 		assert.EqualValues(pk.privateKey.D, pkCopy.privateKey.D)
 		assert.EqualValues(pk.privateKey.PublicKey.X, pkCopy.privateKey.PublicKey.X)
 		assert.EqualValues(pk.privateKey.PublicKey.Y, pkCopy.privateKey.PublicKey.Y)
-
-		assert.NoError(os.RemoveAll(dir))
 	}
+	assert.NoError(os.RemoveAll(dir))
 }
 
 func Test_PrivateKey_SerializeDeserialize(t *testing.T) {

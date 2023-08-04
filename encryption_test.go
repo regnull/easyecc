@@ -44,6 +44,12 @@ func TestEncryptDecrypt(t *testing.T) {
 	assert.NoError(err)
 
 	assert.True(bytes.Equal([]byte(message), plaintext))
+
+	// Test error on different curves.
+	spongeBobPrivateKey, err := GeneratePrivateKey(P521)
+	assert.NoError(err)
+	_, err = alicePrivateKey.EncryptECDH([]byte(message), spongeBobPrivateKey.PublicKey())
+	assert.Equal(ErrDifferentCurves, err)
 }
 
 func TestEncryptDecryptSymmetric(t *testing.T) {
