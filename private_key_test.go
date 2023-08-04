@@ -90,45 +90,53 @@ func Test_PrivateKey_SerializeDeserialize(t *testing.T) {
 func Test_PrivateKey_EncryptDecrypt(t *testing.T) {
 	assert := assert.New(t)
 
-	key, err := NewRandomPrivateKey()
-	assert.NoError(err)
+	for _, curve := range curves {
+		key, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
 
-	encrypted, err := key.EncryptKeyWithPassphrase("super secret spies")
-	assert.NoError(err)
-	assert.NotNil(encrypted)
+		encrypted, err := key.EncryptKeyWithPassphrase("super secret spies")
+		assert.NoError(err)
+		assert.NotNil(encrypted)
 
-	key1, err := NewPrivateKeyFromEncryptedWithPassphrase(encrypted, "super secret spies")
-	assert.NoError(err)
-	assert.True(key1.privateKey.Equal(key.privateKey))
+		key1, err := CreatePrivateKeyFromEncrypted(curve, encrypted, "super secret spies")
+		assert.NoError(err)
+		assert.True(key1.privateKey.Equal(key.privateKey))
+	}
 }
 
 func Test_PrivateKey_FromPassword(t *testing.T) {
 	assert := assert.New(t)
 
-	key := NewPrivateKeyFromPassword([]byte("super secret spies"), []byte{0x11, 0x22, 0x33, 0x44})
-	assert.NotNil(key)
+	for _, curve := range curves {
+		key := CreatePrivateKeyFromPassword(curve, []byte("super secret spies"), []byte{0x11, 0x22, 0x33, 0x44})
+		assert.NotNil(key)
+	}
 }
 
 func Test_PrivateKey_NewPrivateKeyFromEncryptedWithPassphrase_InvalidData(t *testing.T) {
 	assert := assert.New(t)
 
-	key, err := NewPrivateKeyFromEncryptedWithPassphrase([]byte("bad data"), "foo")
-	assert.Nil(key)
-	assert.Error((err))
+	for _, curve := range curves {
+		key, err := CreatePrivateKeyFromEncrypted(curve, []byte("bad data"), "foo")
+		assert.Nil(key)
+		assert.Error((err))
+	}
 }
 
 func Test_PrivateKey_Mnemonic(t *testing.T) {
 	assert := assert.New(t)
 
-	key, err := NewRandomPrivateKey()
-	assert.NoError(err)
-	mnemonic, err := key.Mnemonic()
-	assert.NoError(err)
+	for _, curve := range []EllipticCurve{SECP256K1, P256} {
+		key, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
+		mnemonic, err := key.Mnemonic()
+		assert.NoError(err)
 
-	key1, err := NewPrivateKeyFromMnemonic(mnemonic)
-	assert.NoError(err)
+		key1, err := NewPrivateKeyFromMnemonic(mnemonic)
+		assert.NoError(err)
 
-	assert.True(key.Equal(key1))
+		assert.True(key.Equal(key1))
+	}
 }
 
 func Test_PrivateKey_PadOnSave(t *testing.T) {
@@ -169,13 +177,6 @@ func Test_PrivateKey_EncryptECDH(t *testing.T) {
 	assert := assert.New(t)
 
 	for _, curve := range curves {
-		if curve != P521 {
-			continue
-		}
-		if curve == SECP256K1 {
-			// Not supported by crypto/ecdh.
-			continue
-		}
 		aliceKey, err := GeneratePrivateKey(curve)
 		assert.NoError(err)
 		bobKey, err := GeneratePrivateKey(curve)

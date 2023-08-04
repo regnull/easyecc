@@ -11,10 +11,10 @@ import (
 func TestEncryption(t *testing.T) {
 	assert := assert.New(t)
 
-	alicePrivateKey, err := NewRandomPrivateKey()
+	alicePrivateKey, err := GeneratePrivateKey(SECP256K1)
 	assert.NoError(err)
 
-	bobPrivateKey, err := NewRandomPrivateKey()
+	bobPrivateKey, err := GeneratePrivateKey(SECP256K1)
 	assert.NoError(err)
 
 	key1x, key1y := btcec.S256().ScalarMult(alicePrivateKey.PublicKey().X(), alicePrivateKey.PublicKey().Y(),
@@ -30,17 +30,17 @@ func TestEncryption(t *testing.T) {
 func TestEncryptDecrypt(t *testing.T) {
 	assert := assert.New(t)
 
-	alicePrivateKey, err := NewRandomPrivateKey()
+	alicePrivateKey, err := GeneratePrivateKey(P256)
 	assert.NoError(err)
 
-	bobPrivateKey, err := NewRandomPrivateKey()
+	bobPrivateKey, err := GeneratePrivateKey(P256)
 	assert.NoError(err)
 
 	message := "a"
-	ciphertext, err := alicePrivateKey.Encrypt([]byte(message), bobPrivateKey.PublicKey())
+	ciphertext, err := alicePrivateKey.EncryptECDH([]byte(message), bobPrivateKey.PublicKey())
 	assert.NoError(err)
 
-	plaintext, err := bobPrivateKey.Decrypt(ciphertext, alicePrivateKey.PublicKey())
+	plaintext, err := bobPrivateKey.DecryptECDH(ciphertext, alicePrivateKey.PublicKey())
 	assert.NoError(err)
 
 	assert.True(bytes.Equal([]byte(message), plaintext))
@@ -49,7 +49,7 @@ func TestEncryptDecrypt(t *testing.T) {
 func TestEncryptDecryptSymmetric(t *testing.T) {
 	assert := assert.New(t)
 
-	privateKey, err := NewRandomPrivateKey()
+	privateKey, err := GeneratePrivateKey(P521)
 	assert.NoError(err)
 
 	message := "super secret message"
@@ -61,22 +61,4 @@ func TestEncryptDecryptSymmetric(t *testing.T) {
 	decrypted, err := privateKey.DecryptSymmetric(encrypted)
 	assert.NoError(err)
 	assert.EqualValues(message, string(decrypted))
-}
-
-func Test_ECIESEncryptDecrypt(t *testing.T) {
-	assert := assert.New(t)
-
-	privateKey, err := NewRandomPrivateKey()
-	assert.NoError(err)
-
-	//k := ecies.NewPrivateKeyFromBytes(privateKey.Secret().Bytes())
-
-	message := "super secret message"
-	encrypted, err := privateKey.PublicKey().EncryptECIES([]byte(message))
-	assert.NoError(err)
-
-	decrypted, err := privateKey.DecryptECIES(encrypted)
-	assert.NoError(err)
-
-	assert.Equal(message, string(decrypted))
 }

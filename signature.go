@@ -5,7 +5,8 @@ import (
 	"math/big"
 )
 
-// Signature represents a cryptographic signature.
+// Signature represents a cryptographic signature (ECDSA).
+// See https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
 type Signature struct {
 	R *big.Int
 	S *big.Int
