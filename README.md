@@ -1,5 +1,5 @@
 # Easy Elliptic Curve Cryptography in Go
-![Coverage](https://img.shields.io/badge/Coverage-82.1%25-brightgreen)
+![Coverage](https://img.shields.io/badge/Coverage-83.2%25-brightgreen)
 
 ![GitHub Workflow Status](https://github.com/regnull/easyecc/actions/workflows/go.yml/badge.svg)
 [![GoDoc reference example](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/regnull/easyecc)
