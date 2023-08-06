@@ -1,9 +1,9 @@
 # Easy Elliptic Curve Cryptography in Go
-![Coverage](https://img.shields.io/badge/Coverage-84.9%25-brightgreen)
 
 ![GitHub Workflow Status](https://github.com/regnull/easyecc/actions/workflows/go.yml/badge.svg)
 [![GoDoc reference example](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/regnull/easyecc)
 [![GoReportCard example](https://goreportcard.com/badge/github.com/regnull/easyecc)](https://goreportcard.com/report/github.com/regnull/easyecc)
+[![Coverage Status](https://coveralls.io/repos/github/regnull/easyecc/badge.svg?branch=master)](https://coveralls.io/github/regnull/easyecc?branch=master)
 
 This package ties several other commonly used cryptography packages together. The goal is to make common cryptographic operations simple. 
 The following elliptic curves are supported:
