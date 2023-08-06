@@ -9,6 +9,8 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
@@ -36,6 +38,20 @@ const (
 	P384      EllipticCurve = 3
 	P521      EllipticCurve = 4
 )
+
+func (ec EllipticCurve) String() string {
+	switch ec {
+	case SECP256K1:
+		return "secp256k1"
+	case P256:
+		return "P-256"
+	case P384:
+		return "P-384"
+	case P521:
+		return "P-521"
+	}
+	return "Invalid"
+}
 
 func getCurve(curve EllipticCurve) elliptic.Curve {
 	switch curve {
@@ -409,6 +425,34 @@ func (pk *PrivateKey) DecryptECDH(content []byte, publicKey *PublicKey) ([]byte,
 		return nil, err
 	}
 	return decrypt(encryptionKey, content)
+}
+
+// MarshalToJWK returns the key JWK representation,
+// see https://www.rfc-editor.org/rfc/rfc7517.
+func (pk *PrivateKey) MarshalToJWK() ([]byte, error) {
+	xEncoded := base64.StdEncoding.
+		WithPadding(base64.NoPadding).
+		EncodeToString(pk.PublicKey().X().Bytes())
+	yEncoded := base64.StdEncoding.
+		WithPadding(base64.NoPadding).
+		EncodeToString(pk.PublicKey().Y().Bytes())
+	dEncoded := base64.StdEncoding.
+		WithPadding(base64.NoPadding).
+		EncodeToString(pk.Secret().Bytes())
+
+	return json.MarshalIndent(struct {
+		Kty string `json:"kty"`
+		Crv string `json:"crv"`
+		X   string `json:"x"`
+		Y   string `json:"y"`
+		D   string `json:"d"`
+	}{
+		Kty: "EC",
+		Crv: pk.Curve().String(),
+		X:   xEncoded,
+		Y:   yEncoded,
+		D:   dEncoded,
+	}, "", "  ")
 }
 
 func deriveKey(password, salt []byte) ([]byte, []byte, error) {

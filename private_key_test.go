@@ -313,3 +313,15 @@ func Test_PrivateKey_ToECDSA(t *testing.T) {
 		assert.NotNil(privateKey.ToECDSA())
 	}
 }
+
+func Test_PrivateKey_ToJSON(t *testing.T) {
+	assert := assert.New(t)
+
+	for _, curve := range curves {
+		privateKey, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
+		jsonStr, err := privateKey.MarshalToJWK()
+		assert.NoError(err)
+		assert.True(len(jsonStr) > 10)
+	}
+}
