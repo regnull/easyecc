@@ -87,7 +87,7 @@ func deriveKey(password, salt []byte) ([]byte, error) {
 	return key, nil
 }
 
-func encryptJWS(key []byte, content []byte) (string, error) {
+func encryptJWE(key []byte, content []byte) (string, error) {
 	encrypter, err := jose.NewEncrypter(jose.A256GCM,
 		jose.Recipient{Algorithm: jose.DIRECT, Key: key}, nil)
 	if err != nil {
@@ -127,30 +127,11 @@ func encryptWithPassphraseJWE(passphrase string, content []byte) (string, error)
 	if err != nil {
 		return "", err
 	}
-	encrypter, err := jose.NewEncrypter(jose.A256GCM,
-		jose.Recipient{Algorithm: jose.DIRECT, Key: key}, nil)
+	s, err := encryptJWE(key, content)
 	if err != nil {
 		return "", err
 	}
-	object, err := encrypter.Encrypt(content)
-	if err != nil {
-		return "", err
-	}
-
-	// Add salt field.
-	js := object.FullSerialize()
-	var i interface{}
-	err = json.Unmarshal([]byte(js), &i)
-	if err != nil {
-		return "", err
-	}
-	m := i.(map[string]interface{})
-	m["x-salt"] = base64urlEncode(salt)
-	b, err := json.MarshalIndent(i, "", " ")
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
+	return addJSONField(s, "x-salt", base64urlEncode(salt))
 }
 
 // encryptWithPassphrase encrypts content with a key derived from the passphrase.
