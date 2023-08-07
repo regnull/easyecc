@@ -311,7 +311,7 @@ func (pk *PrivateKey) Curve() EllipticCurve {
 	if pk.privateKey.Curve == elliptic.P521() {
 		return P521
 	}
-	return -1
+	return INVALID_CURVE
 }
 
 // Sign signs (ECDSA) the hash using the private key and returns signature.

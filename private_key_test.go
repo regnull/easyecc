@@ -15,6 +15,13 @@ import (
 
 var curves = []EllipticCurve{SECP256K1, P256, P384, P521}
 
+func Test_PrivateKey_EllipticCurveToString(t *testing.T) {
+	assert := assert.New(t)
+
+	assert.EqualValues("secp256k1", SECP256K1.String())
+	assert.EqualValues("Invalid", INVALID_CURVE.String())
+}
+
 func Test_PrivateKey_getCurve(t *testing.T) {
 	assert := assert.New(t)
 
@@ -209,7 +216,11 @@ func Test_PrivateKey_Mnemonic(t *testing.T) {
 	}
 
 	// Try unsupported curve.
-	_, err := CreatePrivateKeyFromMnemonic(P521, "foo bar baz")
+	key, err := GeneratePrivateKey(P521)
+	assert.NoError(err)
+	_, err = key.Mnemonic()
+	assert.Equal(ErrUnsupportedCurve, err)
+	_, err = CreatePrivateKeyFromMnemonic(P521, "foo bar baz")
 	assert.Equal(ErrUnsupportedCurve, err)
 
 	// Try bad mnemonic.
@@ -217,7 +228,7 @@ func Test_PrivateKey_Mnemonic(t *testing.T) {
 	assert.Error(err)
 
 	// Deprecated function.
-	key := CreatePrivateKey(SECP256K1, big.NewInt(123456))
+	key = CreatePrivateKey(SECP256K1, big.NewInt(123456))
 	mnemonic, err := key.Mnemonic()
 	assert.NoError(err)
 
