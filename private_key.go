@@ -2,17 +2,13 @@ package easyecc
 
 import (
 	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math/big"
 	"os"
 	"strings"
@@ -21,7 +17,6 @@ import (
 	"github.com/go-jose/go-jose/v3"
 	"github.com/tyler-smith/go-bip39"
 	"golang.org/x/crypto/pbkdf2"
-	"golang.org/x/crypto/scrypt"
 )
 
 const (
@@ -43,6 +38,7 @@ const (
 	P521          EllipticCurve = 4
 )
 
+// String returns the elliptic curve name as a string.
 func (ec EllipticCurve) String() string {
 	switch ec {
 	case SECP256K1:
@@ -57,6 +53,8 @@ func (ec EllipticCurve) String() string {
 	return "Invalid"
 }
 
+// StringToEllipticCurve converts the elliptic curve name to EllipticCurve.
+// If the name is not recognized, INVALID_CURVE is returned.
 func StringToEllipticCurve(s string) EllipticCurve {
 	switch strings.ToUpper(s) {
 	case "SECP256K1":
@@ -72,6 +70,8 @@ func StringToEllipticCurve(s string) EllipticCurve {
 	return INVALID_CURVE
 }
 
+// getCurve returns elliptic.Curve interface for the given curve.
+// If the curve is invalid, the function returns nil.
 func getCurve(curve EllipticCurve) elliptic.Curve {
 	switch curve {
 	case SECP256K1:
@@ -86,6 +86,8 @@ func getCurve(curve EllipticCurve) elliptic.Curve {
 	return nil
 }
 
+// getKeyLength returns the key length for the given curve,
+// or -1 if invalid curve was passed in.
 func getKeyLength(curve EllipticCurve) int {
 	switch curve {
 	case SECP256K1:
@@ -129,11 +131,14 @@ func CreatePrivateKey(curve EllipticCurve, secret *big.Int) *PrivateKey {
 	privateKey := &ecdsa.PrivateKey{
 		D: secret}
 	privateKey.PublicKey.Curve = getCurve(curve)
-	privateKey.PublicKey.X, privateKey.PublicKey.Y = privateKey.PublicKey.Curve.ScalarBaseMult(secret.Bytes())
+	privateKey.PublicKey.X, privateKey.PublicKey.Y =
+		privateKey.PublicKey.Curve.ScalarBaseMult(secret.Bytes())
 	return &PrivateKey{privateKey: privateKey}
 }
 
-// CreatePrivateKeyFromPassword creates a private key on the given curve from password using PBKDF2 algorithm.
+// CreatePrivateKeyFromPassword creates a private key on the given curve from password using
+// PBKDF2 algorithm.
+// See https://en.wikipedia.org/wiki/PBKDF2.
 func CreatePrivateKeyFromPassword(curve EllipticCurve, password, salt []byte) *PrivateKey {
 	secret := pbkdf2.Key(password, salt, PBKDF2_ITER, PBKDF2_SIZE, sha256.New)
 	return CreatePrivateKey(curve, new(big.Int).SetBytes(secret))
@@ -151,7 +156,7 @@ func CreatePrivateKeyFromEncrypted(curve EllipticCurve, data []byte, passphrase 
 	}
 	salt, data := data[len(data)-32:], data[:len(data)-32]
 
-	key, _, err := deriveKey([]byte(passphrase), salt)
+	key, err := deriveKey([]byte(passphrase), salt)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +202,7 @@ func CreatePrivateKeyFromJWKFile(fileName string, passphrase string) (*PrivateKe
 	var jsonBytes []byte
 	if passphrase != "" {
 		salt, data := data[len(data)-32:], data[:len(data)-32]
-		key, _, err := deriveKey([]byte(passphrase), salt)
+		key, err := deriveKey([]byte(passphrase), salt)
 		if err != nil {
 			return nil, err
 		}
@@ -229,18 +234,6 @@ func CreatePrivateKeyFromMnemonic(curve EllipticCurve, mnemonic string) (*Privat
 // Secret returns the private key's secret.
 func (pk *PrivateKey) Secret() *big.Int {
 	return pk.privateKey.D
-}
-
-func base64urlEncode(data []byte) string {
-	return base64.StdEncoding.
-		WithPadding(base64.NoPadding).
-		EncodeToString(data)
-}
-
-func base64urlDecode(s string) ([]byte, error) {
-	return base64.
-		StdEncoding.WithPadding(base64.NoPadding).
-		DecodeString(s)
 }
 
 // CreatePrivateKeyFromJWK creates private key from JWK-encoded
@@ -356,25 +349,6 @@ func (pk *PrivateKey) getSharedEncryptionKeySecp256k1(counterParty *PublicKey) [
 	return x.Bytes()
 }
 
-func encrypt(key []byte, content []byte) ([]byte, error) {
-	c, err := aes.NewCipher(key[:32]) // The key must be 32 bytes long.
-	if err != nil {
-		return nil, fmt.Errorf("failed to create cipher: %v", err)
-	}
-
-	gcm, err := cipher.NewGCM(c)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create GCM: %v", err)
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, fmt.Errorf("failed to populate nonce: %v", err)
-	}
-
-	return gcm.Seal(nonce, nonce, content, nil), nil
-}
-
 // EncryptSymmetric encrypts content using this private key. The same private key
 // must be used for decryption.
 // Encryption is done using AES-256 with CGM cipher.
@@ -383,79 +357,11 @@ func (pk *PrivateKey) EncryptSymmetric(content []byte) ([]byte, error) {
 	return encrypt(key[:], content)
 }
 
-func decrypt(key []byte, content []byte) ([]byte, error) {
-	c, err := aes.NewCipher(key[:32]) // The key must be 32 bytes long.
-	if err != nil {
-		return nil, fmt.Errorf("failed to create cipher: %v", err)
-	}
-
-	gcm, err := cipher.NewGCM(c)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create GCM: %v", err)
-	}
-
-	nonceSize := gcm.NonceSize()
-	if len(content) < nonceSize {
-		return nil, fmt.Errorf("invalid content")
-	}
-
-	nonce, ciphertext := content[:nonceSize], content[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt: %v", err)
-	}
-	return plaintext, nil
-}
-
 // DecryptSymmetric decrypts the content that was previously encrypted using this private key.
 // Decryption is done using AES-256 with CGM cipher.
 func (pk *PrivateKey) DecryptSymmetric(content []byte) ([]byte, error) {
 	key := sha256.Sum256(pk.privateKey.D.Bytes())
 	return decrypt(key[:], content)
-}
-
-func encryptWithPassphrase(passphrase string, content []byte) ([]byte, error) {
-	key, salt, err := deriveKey([]byte(passphrase), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	ciphertext, err := encrypt(key, content)
-	if err != nil {
-		return nil, err
-	}
-	ciphertext = append(ciphertext, salt...)
-	return ciphertext, nil
-}
-
-func encryptWithPassphraseJWE(passphrase string, content []byte) (string, error) {
-	key, salt, err := deriveKey([]byte(passphrase), nil)
-	if err != nil {
-		return "", err
-	}
-	encrypter, err := jose.NewEncrypter(jose.A256GCM, jose.Recipient{Algorithm: jose.DIRECT, Key: key}, nil)
-	if err != nil {
-		return "", err
-	}
-	object, err := encrypter.Encrypt(content)
-	if err != nil {
-		return "", err
-	}
-
-	// Add salt field.
-	js := object.FullSerialize()
-	var i interface{}
-	err = json.Unmarshal([]byte(js), &i)
-	if err != nil {
-		return "", err
-	}
-	m := i.(map[string]interface{})
-	m["x-salt"] = base64urlEncode(salt)
-	b, err := json.MarshalIndent(i, "", " ")
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
 }
 
 func decryptWithPassphraseJWE(passphrase string, content string) ([]byte, error) {
@@ -476,7 +382,7 @@ func decryptWithPassphraseJWE(passphrase string, content string) ([]byte, error)
 	if err != nil {
 		return nil, fmt.Errorf("invalid content")
 	}
-	key, _, err := deriveKey([]byte(passphrase), salt)
+	key, err := deriveKey([]byte(passphrase), salt)
 	if err != nil {
 		return nil, err
 	}
@@ -599,29 +505,6 @@ func (pk *PrivateKey) MarshalToJWK() ([]byte, error) {
 		Y:   yEncoded,
 		D:   dEncoded,
 	}, "", "  ")
-}
-
-// deriveKey creates symmetric encryption key and salt (both are 32 bytes long)
-// from password. If salt is not given (nil), new random one is created.
-func deriveKey(password, salt []byte) ([]byte, []byte, error) {
-	if salt == nil {
-		salt = make([]byte, 32)
-		if _, err := rand.Read(salt); err != nil {
-			return nil, nil, err
-		}
-	}
-	key, err := scrypt.Key(password, salt, 16384, 8, 1, 32)
-	if err != nil {
-		return nil, nil, err
-	}
-	return key, salt, nil
-}
-
-func padWithZeros(b []byte, l int) []byte {
-	for len(b) < l {
-		b = append([]byte{0}, b...)
-	}
-	return b
 }
 
 // Everything below is deprecated.
