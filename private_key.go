@@ -30,6 +30,7 @@ const (
 
 var ErrUnsupportedCurve = fmt.Errorf("the operation is not supported on this curve")
 var ErrDifferentCurves = fmt.Errorf("the keys must use the same curve")
+var ErrUnsupportedKeyType = fmt.Errorf("unsupported key type")
 
 type EllipticCurve int
 
@@ -238,11 +239,11 @@ func CreatePrivateKeyFromJWK(data []byte) (*PrivateKey, error) {
 		return nil, err
 	}
 	if pkJSON.Kty != "EC" {
-		return nil, fmt.Errorf("unsupported key type")
+		return nil, ErrUnsupportedKeyType
 	}
 	curve := StringToEllipticCurve(pkJSON.Crv)
 	if curve == INVALID_CURVE {
-		return nil, fmt.Errorf("unsupported curve type")
+		return nil, ErrUnsupportedCurve
 	}
 	// JWK uses Base64url encoding, which is Base64 encoding without padding.
 	dBytes, err := base64.

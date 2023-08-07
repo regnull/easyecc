@@ -129,6 +129,9 @@ func Test_PrivateKey_Load(t *testing.T) {
 		assert.EqualValues(pk.privateKey.PublicKey.Y, pkCopy.privateKey.PublicKey.Y)
 	}
 	assert.NoError(os.RemoveAll(dir))
+
+	_, err = CreatePrivateKeyFromFile(P256, "some_non_existent_file", "foo")
+	assert.Error(err)
 }
 
 func Test_PrivateKey_SerializeDeserialize(t *testing.T) {
@@ -327,6 +330,15 @@ func Test_PrivateKey_ToJWK(t *testing.T) {
 		assert.NoError(err)
 		assert.True(privateKey.Equal(privateKeyCopy))
 	}
+
+	_, err := CreatePrivateKeyFromJWK([]byte("{{{{not valid JSON %$##$"))
+	assert.Error(err)
+
+	_, err = CreatePrivateKeyFromJWK([]byte("{\"kty\": \"XYZ\"}"))
+	assert.Equal(ErrUnsupportedKeyType, err)
+
+	_, err = CreatePrivateKeyFromJWK([]byte("{\"kty\": \"EC\", \"crv\": \"MyCurve\"}"))
+	assert.Equal(ErrUnsupportedCurve, err)
 }
 
 func Test_PrivateKey_SaveAsJWK(t *testing.T) {
@@ -358,4 +370,7 @@ func Test_PrivateKey_SaveAsJWK(t *testing.T) {
 		assert.True(privateKey.Equal(privateKeyCopy))
 	}
 	assert.NoError(os.RemoveAll(dir))
+
+	_, err = CreatePrivateKeyFromJWKFile("some_non_existent_file", "foo")
+	assert.Error(err)
 }
