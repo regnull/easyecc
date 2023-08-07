@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/go-jose/go-jose/v3"
 	"github.com/tyler-smith/go-bip39"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/scrypt"
@@ -104,6 +105,7 @@ type PrivateKey struct {
 	privateKey *ecdsa.PrivateKey
 }
 
+// privateKeyJSON struct is used when serializing keys to JWK format.
 type privateKeyJSON struct {
 	Kty string `json:"kty"`
 	Crv string `json:"crv"`
@@ -229,6 +231,18 @@ func (pk *PrivateKey) Secret() *big.Int {
 	return pk.privateKey.D
 }
 
+func base64urlEncode(data []byte) string {
+	return base64.StdEncoding.
+		WithPadding(base64.NoPadding).
+		EncodeToString(data)
+}
+
+func base64urlDecode(s string) ([]byte, error) {
+	return base64.
+		StdEncoding.WithPadding(base64.NoPadding).
+		DecodeString(s)
+}
+
 // CreatePrivateKeyFromJWK creates private key from JWK-encoded
 // representation.
 // See https://www.rfc-editor.org/rfc/rfc7517.
@@ -246,9 +260,7 @@ func CreatePrivateKeyFromJWK(data []byte) (*PrivateKey, error) {
 		return nil, ErrUnsupportedCurve
 	}
 	// JWK uses Base64url encoding, which is Base64 encoding without padding.
-	dBytes, err := base64.
-		StdEncoding.WithPadding(base64.NoPadding).
-		DecodeString(pkJSON.D)
+	dBytes, err := base64urlDecode(pkJSON.D)
 	if err != nil {
 		return nil, err
 	}
@@ -416,6 +428,65 @@ func encryptWithPassphrase(passphrase string, content []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
+func encryptWithPassphraseJWE(passphrase string, content []byte) (string, error) {
+	key, salt, err := deriveKey([]byte(passphrase), nil)
+	if err != nil {
+		return "", err
+	}
+	encrypter, err := jose.NewEncrypter(jose.A256GCM, jose.Recipient{Algorithm: jose.DIRECT, Key: key}, nil)
+	if err != nil {
+		return "", err
+	}
+	object, err := encrypter.Encrypt(content)
+	if err != nil {
+		return "", err
+	}
+
+	// Add salt field.
+	js := object.FullSerialize()
+	var i interface{}
+	err = json.Unmarshal([]byte(js), &i)
+	if err != nil {
+		return "", err
+	}
+	m := i.(map[string]interface{})
+	m["x-salt"] = base64urlEncode(salt)
+	b, err := json.MarshalIndent(i, "", " ")
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func decryptWithPassphraseJWE(passphrase string, content string) ([]byte, error) {
+	var i interface{}
+	err := json.Unmarshal([]byte(content), &i)
+	if err != nil {
+		return nil, err
+	}
+	m, ok := i.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid content")
+	}
+	saltStr, ok := m["x-salt"].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid content")
+	}
+	salt, err := base64urlDecode(saltStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid content")
+	}
+	key, _, err := deriveKey([]byte(passphrase), salt)
+	if err != nil {
+		return nil, err
+	}
+	object, err := jose.ParseEncrypted(content)
+	if err != nil {
+		return nil, err
+	}
+	return object.Decrypt(key)
+}
+
 // EncryptKeyWithPassphrase encrypts this private key using a passphrase.
 // Encryption is done using AES-256 with CGM cipher, with a key derived from the passphrase.
 func (pk *PrivateKey) EncryptKeyWithPassphrase(passphrase string) ([]byte, error) {
@@ -517,15 +588,9 @@ func (pk *PrivateKey) DecryptECDH(content []byte, publicKey *PublicKey) ([]byte,
 // MarshalToJWK returns the key JWK representation,
 // see https://www.rfc-editor.org/rfc/rfc7517.
 func (pk *PrivateKey) MarshalToJWK() ([]byte, error) {
-	xEncoded := base64.StdEncoding.
-		WithPadding(base64.NoPadding).
-		EncodeToString(pk.PublicKey().X().Bytes())
-	yEncoded := base64.StdEncoding.
-		WithPadding(base64.NoPadding).
-		EncodeToString(pk.PublicKey().Y().Bytes())
-	dEncoded := base64.StdEncoding.
-		WithPadding(base64.NoPadding).
-		EncodeToString(pk.Secret().Bytes())
+	xEncoded := base64urlEncode(pk.PublicKey().X().Bytes())
+	yEncoded := base64urlEncode(pk.PublicKey().Y().Bytes())
+	dEncoded := base64urlEncode(pk.Secret().Bytes())
 
 	return json.MarshalIndent(privateKeyJSON{
 		Kty: "EC",

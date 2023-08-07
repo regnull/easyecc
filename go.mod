@@ -13,6 +13,7 @@ require (
 	github.com/ecies/go v1.0.1
 	github.com/ecies/go/v2 v2.0.7 // indirect
 	github.com/ethereum/go-ethereum v1.12.0
+	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
 	github.com/holiman/uint256 v1.2.3 // indirect
 	github.com/stretchr/testify v1.8.4
 	github.com/tyler-smith/go-bip39 v1.1.0

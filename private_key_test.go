@@ -385,3 +385,18 @@ func Test_PrivateKey_SaveAsJWK(t *testing.T) {
 	_, err = CreatePrivateKeyFromJWKFile("some_non_existent_file", "foo")
 	assert.Error(err)
 }
+
+func Test_PrivateKey_EncryptJWE(t *testing.T) {
+	assert := assert.New(t)
+
+	plaintext := "Putin Huylo"
+	cyphertext, err := encryptWithPassphraseJWE("foobar", []byte(plaintext))
+	assert.NoError(err)
+	assert.True(len(cyphertext) > 10)
+
+	txt, err := decryptWithPassphraseJWE("foobar", cyphertext)
+	assert.NoError(err)
+	assert.True(len(txt) > 10)
+
+	assert.Equal(plaintext, string(txt))
+}
