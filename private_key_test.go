@@ -314,7 +314,7 @@ func Test_PrivateKey_ToECDSA(t *testing.T) {
 	}
 }
 
-func Test_PrivateKey_ToJSON(t *testing.T) {
+func Test_PrivateKey_ToJWK(t *testing.T) {
 	assert := assert.New(t)
 
 	for _, curve := range curves {
@@ -323,5 +323,39 @@ func Test_PrivateKey_ToJSON(t *testing.T) {
 		jsonStr, err := privateKey.MarshalToJWK()
 		assert.NoError(err)
 		assert.True(len(jsonStr) > 10)
+		privateKeyCopy, err := CreatePrivateKeyFromJWK(jsonStr)
+		assert.NoError(err)
+		assert.True(privateKey.Equal(privateKeyCopy))
 	}
+}
+
+func Test_PrivateKey_SaveAsJWK(t *testing.T) {
+	assert := assert.New(t)
+
+	dir, err := os.MkdirTemp("", "pktest")
+	assert.NoError(err)
+	// Without encryption.
+	for _, curve := range curves {
+		privateKey, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
+		fileName := path.Join(dir, fmt.Sprintf("private_key_%v", curve))
+		err = privateKey.SaveAsJWK(fileName, "")
+		assert.NoError(err)
+		privateKeyCopy, err := CreatePrivateKeyFromJWKFile(fileName, "")
+		assert.NoError(err)
+		assert.True(privateKey.Equal(privateKeyCopy))
+	}
+	// With encryption.
+	passphrase := "potato123"
+	for _, curve := range curves {
+		privateKey, err := GeneratePrivateKey(curve)
+		assert.NoError(err)
+		fileName := path.Join(dir, fmt.Sprintf("private_key_enc_%v", curve))
+		err = privateKey.SaveAsJWK(fileName, passphrase)
+		assert.NoError(err)
+		privateKeyCopy, err := CreatePrivateKeyFromJWKFile(fileName, passphrase)
+		assert.NoError(err)
+		assert.True(privateKey.Equal(privateKeyCopy))
+	}
+	assert.NoError(os.RemoveAll(dir))
 }

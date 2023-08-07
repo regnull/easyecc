@@ -15,6 +15,7 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/tyler-smith/go-bip39"
@@ -33,10 +34,11 @@ var ErrDifferentCurves = fmt.Errorf("the keys must use the same curve")
 type EllipticCurve int
 
 const (
-	SECP256K1 EllipticCurve = 1
-	P256      EllipticCurve = 2
-	P384      EllipticCurve = 3
-	P521      EllipticCurve = 4
+	INVALID_CURVE EllipticCurve = -1
+	SECP256K1     EllipticCurve = 1
+	P256          EllipticCurve = 2
+	P384          EllipticCurve = 3
+	P521          EllipticCurve = 4
 )
 
 func (ec EllipticCurve) String() string {
@@ -51,6 +53,21 @@ func (ec EllipticCurve) String() string {
 		return "P-521"
 	}
 	return "Invalid"
+}
+
+func StringToEllipticCurve(s string) EllipticCurve {
+	switch strings.ToUpper(s) {
+	case "SECP256K1":
+		return SECP256K1
+	case "P-256":
+		return P256
+	case "P-384":
+		return P384
+	case "P-521":
+		return P521
+	}
+
+	return INVALID_CURVE
 }
 
 func getCurve(curve EllipticCurve) elliptic.Curve {
@@ -86,6 +103,14 @@ type PrivateKey struct {
 	privateKey *ecdsa.PrivateKey
 }
 
+type privateKeyJSON struct {
+	Kty string `json:"kty"`
+	Crv string `json:"crv"`
+	X   string `json:"x"`
+	Y   string `json:"y"`
+	D   string `json:"d"`
+}
+
 // GeneratePrivateKey creates a new random private key,
 // given a curve.
 func GeneratePrivateKey(curve EllipticCurve) (*PrivateKey, error) {
@@ -117,6 +142,7 @@ func CreatePrivateKeyFromPassword(curve EllipticCurve, password, salt []byte) *P
 func CreatePrivateKeyFromEncrypted(curve EllipticCurve, data []byte, passphrase string) (*PrivateKey,
 	error) {
 	// Data length must be the key length plus at least one more byte.
+	// TODO: This doesn't look like a useful check.
 	if len(data) < getKeyLength(curve)+1 {
 		return nil, fmt.Errorf("invalid data")
 	}
@@ -126,19 +152,12 @@ func CreatePrivateKeyFromEncrypted(curve EllipticCurve, data []byte, passphrase 
 	if err != nil {
 		return nil, err
 	}
-	blockCipher, err := aes.NewCipher(key)
+
+	keyBytes, err := decrypt(key, data)
 	if err != nil {
 		return nil, err
 	}
-	gcm, err := cipher.NewGCM(blockCipher)
-	if err != nil {
-		return nil, err
-	}
-	nonce, ciphertext := data[:gcm.NonceSize()], data[gcm.NonceSize():]
-	keyBytes, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return nil, err
-	}
+
 	secret := new(big.Int).SetBytes(keyBytes)
 	return CreatePrivateKey(curve, secret), nil
 }
@@ -148,18 +167,47 @@ func CreatePrivateKeyFromEncrypted(curve EllipticCurve, data []byte, passphrase 
 // If the passphrase is an empty string, no decryption is done (the file content is assumed
 // to be not encrypted).
 func CreatePrivateKeyFromFile(curve EllipticCurve, fileName string, passphrase string) (*PrivateKey, error) {
+	// TODO: Perhaps rename this function to something like LoadPrivateKey in the next major version?
 	b, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key: %v", err)
 	}
 
 	if passphrase != "" {
-		return NewPrivateKeyFromEncryptedWithPassphrase(b, passphrase)
+		return CreatePrivateKeyFromEncrypted(curve, b, passphrase)
 	}
 
 	secret := new(big.Int)
 	secret.SetBytes(b)
 	return CreatePrivateKey(curve, secret), nil
+}
+
+// CreatePrivateKeyFromJWKFile loads private key from file in JWK format, optionally
+// decrypting it.
+func CreatePrivateKeyFromJWKFile(fileName string, passphrase string) (*PrivateKey, error) {
+	// TODO: Rename this to LoadPrivateKeyAsJWK in the next major version.
+	data, err := os.ReadFile(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load private key: %v", err)
+	}
+
+	var jsonBytes []byte
+	if passphrase != "" {
+		salt, data := data[len(data)-32:], data[:len(data)-32]
+		key, _, err := deriveKey([]byte(passphrase), salt)
+		if err != nil {
+			return nil, err
+		}
+
+		jsonBytes, err = decrypt(key, data)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		jsonBytes = data
+	}
+
+	return CreatePrivateKeyFromJWK(jsonBytes)
 }
 
 // NewPrivateKeyFromMnemonic creates private key on given curve from a mnemonic phrase.
@@ -180,6 +228,34 @@ func (pk *PrivateKey) Secret() *big.Int {
 	return pk.privateKey.D
 }
 
+// CreatePrivateKeyFromJWK creates private key from JWK-encoded
+// representation.
+// See https://www.rfc-editor.org/rfc/rfc7517.
+func CreatePrivateKeyFromJWK(data []byte) (*PrivateKey, error) {
+	var pkJSON privateKeyJSON
+	err := json.Unmarshal(data, &pkJSON)
+	if err != nil {
+		return nil, err
+	}
+	if pkJSON.Kty != "EC" {
+		return nil, fmt.Errorf("unsupported key type")
+	}
+	curve := StringToEllipticCurve(pkJSON.Crv)
+	if curve == INVALID_CURVE {
+		return nil, fmt.Errorf("unsupported curve type")
+	}
+	// JWK uses Base64url encoding, which is Base64 encoding without padding.
+	dBytes, err := base64.
+		StdEncoding.WithPadding(base64.NoPadding).
+		DecodeString(pkJSON.D)
+	if err != nil {
+		return nil, err
+	}
+	d := new(big.Int)
+	d.SetBytes(dBytes)
+	return CreatePrivateKey(curve, d), nil
+}
+
 // Save saves the private key to the specified file. If the passphrase is given, the key will
 // be encrypted with this passphrase. If the passphrase is an empty string, the key is not
 // encrypted.
@@ -195,6 +271,24 @@ func (pk *PrivateKey) Save(fileName string, passphrase string) error {
 	// Pad with zero bytes if necessary.
 	b := padWithZeros(pk.privateKey.D.Bytes(), getKeyLength(pk.Curve()))
 	return os.WriteFile(fileName, b, 0600)
+}
+
+// SaveAsJWK writes the key to a file in JWK format, optionally encrypting it
+// with a passphrase.
+func (pk *PrivateKey) SaveAsJWK(fileName string, passphrase string) error {
+	jsonBytes, err := pk.MarshalToJWK()
+	if err != nil {
+		return err
+	}
+	if passphrase != "" {
+		data, err := encryptWithPassphrase(passphrase, jsonBytes)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(fileName, data, 0600)
+	}
+
+	return os.WriteFile(fileName, jsonBytes, 0600)
 }
 
 // PublicKey returns the public key derived from this private key.
@@ -307,32 +401,24 @@ func (pk *PrivateKey) DecryptSymmetric(content []byte) ([]byte, error) {
 	return decrypt(key[:], content)
 }
 
-// EncryptKeyWithPassphrase encrypts this private key using a passphrase.
-// Encryption is done using AES-256 with CGM cipher, with a key derived from the passphrase.
-func (pk *PrivateKey) EncryptKeyWithPassphrase(passphrase string) ([]byte, error) {
+func encryptWithPassphrase(passphrase string, content []byte) ([]byte, error) {
 	key, salt, err := deriveKey([]byte(passphrase), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	blockCipher, err := aes.NewCipher(key)
+	ciphertext, err := encrypt(key, content)
 	if err != nil {
 		return nil, err
 	}
-
-	gcm, err := cipher.NewGCM(blockCipher)
-	if err != nil {
-		return nil, err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err = rand.Read(nonce); err != nil {
-		return nil, err
-	}
-
-	ciphertext := gcm.Seal(nonce, nonce, pk.privateKey.D.Bytes(), nil)
 	ciphertext = append(ciphertext, salt...)
 	return ciphertext, nil
+}
+
+// EncryptKeyWithPassphrase encrypts this private key using a passphrase.
+// Encryption is done using AES-256 with CGM cipher, with a key derived from the passphrase.
+func (pk *PrivateKey) EncryptKeyWithPassphrase(passphrase string) ([]byte, error) {
+	return encryptWithPassphrase(passphrase, pk.privateKey.D.Bytes())
 }
 
 // Mnemonic returns a mnemonic phrase which can be used to recover this private key.
@@ -440,13 +526,7 @@ func (pk *PrivateKey) MarshalToJWK() ([]byte, error) {
 		WithPadding(base64.NoPadding).
 		EncodeToString(pk.Secret().Bytes())
 
-	return json.MarshalIndent(struct {
-		Kty string `json:"kty"`
-		Crv string `json:"crv"`
-		X   string `json:"x"`
-		Y   string `json:"y"`
-		D   string `json:"d"`
-	}{
+	return json.MarshalIndent(privateKeyJSON{
 		Kty: "EC",
 		Crv: pk.Curve().String(),
 		X:   xEncoded,
@@ -455,6 +535,8 @@ func (pk *PrivateKey) MarshalToJWK() ([]byte, error) {
 	}, "", "  ")
 }
 
+// deriveKey creates symmetric encryption key and salt (both are 32 bytes long)
+// from password. If salt is not given (nil), new random one is created.
 func deriveKey(password, salt []byte) ([]byte, []byte, error) {
 	if salt == nil {
 		salt = make([]byte, 32)
