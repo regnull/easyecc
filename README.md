@@ -124,3 +124,32 @@ fmt.Printf("Ethereum address: %s\n", ethereumAddress)
 // Output: Bitcoin address: 12vieiAHxBe4qCUrwvfb2kRkDuc8kQ2VZ2
 // Ethereum address: 0xEB4665750b1382DF4AeBF49E04B429AAAc4d9929
 ```
+
+## JWK Support
+
+EasyECC offers some limited JWK support (see https://www.rfc-editor.org/rfc/rfc7517).
+Private keys can be exported and imported as JWK JSON:
+```Go
+privateKey := CreatePrivateKey(P256, big.NewInt(12345))
+jwkBytes, err := privateKey.MarshalToJWK()
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Printf("%s\n", jwkBytes)
+
+privateKeyCopy, err := CreatePrivateKeyFromJWK(jwkBytes)
+if err != nil {
+	log.Fatal(err)
+}
+if privateKey.Equal(privateKeyCopy) {
+	fmt.Printf("keys match!")
+}
+// Output: {
+//   "kty": "EC",
+//   "crv": "P-256",
+//   "x": "Ju/OvQ7p40pmkYfhizqRIrL3M5RbZJzJ+fkh6fna2BI",
+//   "y": "kCOL3pzHuzMNFQxncE3SWucFUgV0S28xv0BwdFhy0OY",
+//   "d": "MDk"
+// }
+// keys match!
+```

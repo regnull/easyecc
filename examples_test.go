@@ -56,6 +56,31 @@ func ExamplePrivateKey_EncryptKeyWithPassphrase() {
 	// Output: 12345
 }
 
+func ExamplePrivateKey_MarshalToJWK() {
+	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
+	jwkBytes, err := privateKey.MarshalToJWK()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s\n", jwkBytes)
+
+	privateKeyCopy, err := CreatePrivateKeyFromJWK(jwkBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if privateKey.Equal(privateKeyCopy) {
+		fmt.Printf("keys match!")
+	}
+	// Output: {
+	//   "kty": "EC",
+	//   "crv": "P-256",
+	//   "x": "Ju/OvQ7p40pmkYfhizqRIrL3M5RbZJzJ+fkh6fna2BI",
+	//   "y": "kCOL3pzHuzMNFQxncE3SWucFUgV0S28xv0BwdFhy0OY",
+	//   "d": "MDk"
+	// }
+	// keys match!
+}
+
 func ExamplePublicKey_SerializeCompressed() {
 	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
 	publicKey := privateKey.PublicKey()
