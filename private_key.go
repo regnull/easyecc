@@ -1,7 +1,6 @@
 package easyecc
 
 import (
-	"bytes"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -179,11 +178,6 @@ func NewPrivateKeyFromMnemonic(curve EllipticCurve, mnemonic string) (*PrivateKe
 	return NewPrivateKeyFromSecret(curve, secret), nil
 }
 
-// Secret returns the private key's secret.
-func (pk *PrivateKey) Secret() *big.Int {
-	return pk.privateKey.D
-}
-
 // CreatePrivateKeyFromJSON creates private key from JWK-encoded
 // representation.
 // See https://www.rfc-editor.org/rfc/rfc7517.
@@ -208,6 +202,11 @@ func NewPrivateKeyFromJSON(data string) (*PrivateKey, error) {
 	d := new(big.Int)
 	d.SetBytes(dBytes)
 	return NewPrivateKeyFromSecret(curve, d), nil
+}
+
+// Secret returns the private key's secret.
+func (pk *PrivateKey) Secret() *big.Int {
+	return pk.privateKey.D
 }
 
 // Save saves the private key to the specified file. If passphrase is empty, the file
@@ -259,19 +258,6 @@ func (pk *PrivateKey) Sign(hash []byte) (*Signature, error) {
 		return nil, err
 	}
 	return &Signature{R: r, S: s}, nil
-}
-
-// getSharedEncryptionKeySecp256k1_Legacy computes a shared encryption key for SECP256K1 curve
-// in a way that is consistent with how it's done in crypto/ecdh.
-// This is the old way of doing this, which is somewhat different from what crypto/ecdh does.
-// The latter returns X coordinate bytes while we join X and Y and hash the result.
-// TODO: This will go to the deprecated package.
-func (pk *PrivateKey) getSharedEncryptionKeySecp256k1_Legacy(counterParty *PublicKey) []byte {
-	x, y := btcec.S256().ScalarMult(counterParty.X(), counterParty.Y(),
-		pk.privateKey.D.Bytes())
-	b := bytes.Join([][]byte{x.Bytes(), y.Bytes()}, nil)
-	hash := sha256.Sum256(b)
-	return hash[:]
 }
 
 // getSharedEncryptionKeySecp256k1 computes a shared encryption key for SECP256K1 curve
