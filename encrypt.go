@@ -175,23 +175,3 @@ func decryptWithPassphraseJWE(passphrase string, content string) ([]byte, error)
 	b, err := decryptJWE(key, content)
 	return b, err
 }
-
-// encryptWithPassphrase encrypts content with a key derived from the passphrase.
-func encryptWithPassphrase(passphrase string, content []byte) ([]byte, error) {
-	// This should return JWE.
-	salt, err := makeSalt()
-	if err != nil {
-		return nil, err
-	}
-	key, err := deriveKey([]byte(passphrase), salt)
-	if err != nil {
-		return nil, err
-	}
-
-	ciphertext, err := encrypt(key, content)
-	if err != nil {
-		return nil, err
-	}
-	ciphertext = append(ciphertext, salt...)
-	return ciphertext, nil
-}

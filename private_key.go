@@ -284,12 +284,6 @@ func (pk *PrivateKey) DecryptSymmetric(content []byte) ([]byte, error) {
 	return decrypt(key[:], content)
 }
 
-// EncryptKeyWithPassphrase encrypts this private key using a passphrase.
-// Encryption is done using AES-256 with CGM cipher, with a key derived from the passphrase.
-func (pk *PrivateKey) EncryptKeyWithPassphrase(passphrase string) ([]byte, error) {
-	return encryptWithPassphrase(passphrase, pk.privateKey.D.Bytes())
-}
-
 // Mnemonic returns a mnemonic phrase which can be used to recover this private key.
 func (pk *PrivateKey) Mnemonic() (string, error) {
 	if pk.Curve() != SECP256K1 && pk.Curve() != P256 {
