@@ -37,10 +37,10 @@ func TestEncryptDecrypt(t *testing.T) {
 	assert.NoError(err)
 
 	message := "All that we are is the result of what we have thought"
-	ciphertext, err := alicePrivateKey.EncryptECDH([]byte(message), bobPrivateKey.PublicKey())
+	ciphertext, err := alicePrivateKey.Encrypt([]byte(message), bobPrivateKey.PublicKey())
 	assert.NoError(err)
 
-	plaintext, err := bobPrivateKey.DecryptECDH(ciphertext, alicePrivateKey.PublicKey())
+	plaintext, err := bobPrivateKey.Decrypt(ciphertext, alicePrivateKey.PublicKey())
 	assert.NoError(err)
 
 	assert.True(bytes.Equal([]byte(message), plaintext))
@@ -48,7 +48,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	// Test error on different curves.
 	spongeBobPrivateKey, err := NewPrivateKey(P521)
 	assert.NoError(err)
-	_, err = alicePrivateKey.EncryptECDH([]byte(message), spongeBobPrivateKey.PublicKey())
+	_, err = alicePrivateKey.Encrypt([]byte(message), spongeBobPrivateKey.PublicKey())
 	assert.Equal(ErrDifferentCurves, err)
 }
 

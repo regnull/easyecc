@@ -120,9 +120,9 @@ func Test_PrivateKey_EncryptECDH(t *testing.T) {
 		assert.NoError(err)
 
 		message := "Putin Huylo"
-		encrypted, err := aliceKey.EncryptECDH([]byte(message), bobKey.PublicKey())
+		encrypted, err := aliceKey.Encrypt([]byte(message), bobKey.PublicKey())
 		assert.NoError(err)
-		decrypted, err := bobKey.DecryptECDH(encrypted, aliceKey.PublicKey())
+		decrypted, err := bobKey.Decrypt(encrypted, aliceKey.PublicKey())
 		assert.NoError(err)
 
 		assert.True(bytes.Equal([]byte(message), decrypted))

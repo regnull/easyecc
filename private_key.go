@@ -360,7 +360,7 @@ func (pk *PrivateKey) GetECDHEncryptionKey(publicKey *PublicKey) ([]byte, error)
 	return encryptionKey, nil
 }
 
-func (pk *PrivateKey) EncryptECDH(content []byte, publicKey *PublicKey) ([]byte, error) {
+func (pk *PrivateKey) Encrypt(content []byte, publicKey *PublicKey) ([]byte, error) {
 	encryptionKey, err := pk.GetECDHEncryptionKey(publicKey)
 	if err != nil {
 		return nil, err
@@ -368,7 +368,7 @@ func (pk *PrivateKey) EncryptECDH(content []byte, publicKey *PublicKey) ([]byte,
 	return encrypt(encryptionKey, content)
 }
 
-func (pk *PrivateKey) DecryptECDH(content []byte, publicKey *PublicKey) ([]byte, error) {
+func (pk *PrivateKey) Decrypt(content []byte, publicKey *PublicKey) ([]byte, error) {
 	encryptionKey, err := pk.GetECDHEncryptionKey(publicKey)
 	if err != nil {
 		return nil, err

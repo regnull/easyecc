@@ -30,11 +30,11 @@ func ExamplePrivateKey_Encrypt() {
 		log.Fatal(err)
 	}
 	data := "super secret message"
-	encrypted, err := aliceKey.EncryptECDH([]byte(data), bobKey.PublicKey())
+	encrypted, err := aliceKey.Encrypt([]byte(data), bobKey.PublicKey())
 	if err != nil {
 		log.Fatal(err)
 	}
-	decrypted, err := bobKey.DecryptECDH(encrypted, aliceKey.PublicKey())
+	decrypted, err := bobKey.Decrypt(encrypted, aliceKey.PublicKey())
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -39,12 +39,12 @@ Use them when creating keys.
 ## Sign hash and verify signature (Using [ECDSA](https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm))
 
 ```Go
-privateKey := CreatePrivateKey(P256, big.NewInt(12345))
+privateKey := NewPrivateKeyFromSecret(P256, big.NewInt(12345))
 data := "super secret message"
 hash := Hash256([]byte(data))
 signature, err := privateKey.Sign(hash)
 if err != nil {
-	log.Fatal(err)
+    log.Fatal(err)
 }
 publicKey := privateKey.PublicKey()
 success := signature.Verify(publicKey, hash)
@@ -55,22 +55,22 @@ fmt.Printf("Signature verified: %v\n", success)
 ## Encrypt with shared secret (Using [ECDH](https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman)):
 
 ```Go
-aliceKey, err := GeneratePrivateKey(P256)
+aliceKey, err := NewPrivateKey(P256)
 if err != nil {
-	log.Fatal(err)
+    log.Fatal(err)
 }
-bobKey, err := GeneratePrivateKey(P256)
+bobKey, err := NewPrivateKey(P256)
 if err != nil {
-	log.Fatal(err)
+    log.Fatal(err)
 }
 data := "super secret message"
-encrypted, err := aliceKey.EncryptECDH([]byte(data), bobKey.PublicKey())
+encrypted, err := aliceKey.Encrypt([]byte(data), bobKey.PublicKey())
 if err != nil {
-	log.Fatal(err)
+    log.Fatal(err)
 }
-decrypted, err := bobKey.DecryptECDH(encrypted, aliceKey.PublicKey())
+decrypted, err := bobKey.Decrypt(encrypted, aliceKey.PublicKey())
 if err != nil {
-	log.Fatal(err)
+    log.Fatal(err)
 }
 fmt.Printf("%s\n", string(decrypted))
 // Output: super secret message
