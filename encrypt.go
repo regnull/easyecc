@@ -100,6 +100,18 @@ func encryptJWE(key []byte, content []byte) (string, error) {
 	return object.FullSerialize(), nil
 }
 
+func decryptJWE(key []byte, content string) ([]byte, error) {
+	object, err := jose.ParseEncrypted(content)
+	if err != nil {
+		return nil, err
+	}
+	decrypted, err := object.Decrypt(key)
+	if err != nil {
+		return nil, err
+	}
+	return decrypted, nil
+}
+
 func addJSONField(content string, name string, value interface{}) (string, error) {
 	var i interface{}
 	err := json.Unmarshal([]byte(content), &i)
@@ -132,6 +144,36 @@ func encryptWithPassphraseJWE(passphrase string, content []byte) (string, error)
 		return "", err
 	}
 	return addJSONField(s, "x-salt", base64urlEncode(salt))
+}
+
+func decryptWithPassphraseJWE(passphrase string, content string) ([]byte, error) {
+	var i interface{}
+	err := json.Unmarshal([]byte(content), &i)
+	if err != nil {
+		return nil, err
+	}
+	m, ok := i.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid content")
+	}
+	saltObj, ok := m["x-salt"]
+	if !ok {
+		return nil, fmt.Errorf("invalid content")
+	}
+	saltStr, ok := saltObj.(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid content")
+	}
+	salt, err := base64urlDecode(saltStr)
+	if !ok {
+		return nil, fmt.Errorf("invalid content")
+	}
+	key, err := deriveKey([]byte(passphrase), salt)
+	if err != nil {
+		return nil, err
+	}
+	b, err := decryptJWE(key, content)
+	return b, err
 }
 
 // encryptWithPassphrase encrypts content with a key derived from the passphrase.

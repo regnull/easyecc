@@ -7,7 +7,7 @@ import (
 )
 
 func ExamplePrivateKey_Sign() {
-	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
+	privateKey := NewPrivateKeyFromSecret(P256, big.NewInt(12345))
 	data := "super secret message"
 	hash := Hash256([]byte(data))
 	signature, err := privateKey.Sign(hash)
@@ -21,11 +21,11 @@ func ExamplePrivateKey_Sign() {
 }
 
 func ExamplePrivateKey_Encrypt() {
-	aliceKey, err := GeneratePrivateKey(P256)
+	aliceKey, err := NewPrivateKey(P256)
 	if err != nil {
 		log.Fatal(err)
 	}
-	bobKey, err := GeneratePrivateKey(P256)
+	bobKey, err := NewPrivateKey(P256)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,47 +42,27 @@ func ExamplePrivateKey_Encrypt() {
 	// Output: super secret message
 }
 
-func ExamplePrivateKey_EncryptKeyWithPassphrase() {
-	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
-	encryptedKey, err := privateKey.EncryptKeyWithPassphrase("my passphrase")
-	if err != nil {
-		log.Fatal(err)
-	}
-	decryptedKey, err := CreatePrivateKeyFromEncrypted(P256, encryptedKey, "my passphrase")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("%d\n", decryptedKey.Secret())
-	// Output: 12345
-}
-
-func ExamplePrivateKey_MarshalToJWK() {
-	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
-	jwkBytes, err := privateKey.MarshalToJWK()
+func ExamplePrivateKey_MarshalToJSON() {
+	privateKey := NewPrivateKeyFromSecret(P256, big.NewInt(12345))
+	jwkBytes, err := privateKey.MarshalToJSON()
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("%s\n", jwkBytes)
 
-	privateKeyCopy, err := CreatePrivateKeyFromJWK(jwkBytes)
+	privateKeyCopy, err := NewPrivateKeyFromJSON(jwkBytes)
 	if err != nil {
 		log.Fatal(err)
 	}
 	if privateKey.Equal(privateKeyCopy) {
 		fmt.Printf("keys match!")
 	}
-	// Output: {
-	//   "kty": "EC",
-	//   "crv": "P-256",
-	//   "x": "Ju/OvQ7p40pmkYfhizqRIrL3M5RbZJzJ+fkh6fna2BI",
-	//   "y": "kCOL3pzHuzMNFQxncE3SWucFUgV0S28xv0BwdFhy0OY",
-	//   "d": "MDk"
-	// }
+	// Output: {"kty":"EC","crv":"P-256","x":"Ju/OvQ7p40pmkYfhizqRIrL3M5RbZJzJ+fkh6fna2BI","y":"kCOL3pzHuzMNFQxncE3SWucFUgV0S28xv0BwdFhy0OY","d":"MDk"}
 	// keys match!
 }
 
 func ExamplePublicKey_SerializeCompressed() {
-	privateKey := CreatePrivateKey(P256, big.NewInt(12345))
+	privateKey := NewPrivateKeyFromSecret(P256, big.NewInt(12345))
 	publicKey := privateKey.PublicKey()
 	serializedCompressed := publicKey.SerializeCompressed()
 	fmt.Printf("%x\n", serializedCompressed)
@@ -98,7 +78,7 @@ func ExamplePublicKey_SerializeCompressed() {
 
 func ExamplePublicKey_BitcoinAndEthereumAddress() {
 	// BitcoinAddress and EthereumAddress only work for secp256k1 curve.
-	privateKey := CreatePrivateKey(SECP256K1, big.NewInt(12345))
+	privateKey := NewPrivateKeyFromSecret(SECP256K1, big.NewInt(12345))
 	publicKey := privateKey.PublicKey()
 	bitcoinAddress, err := publicKey.BitcoinAddress()
 	if err != nil {

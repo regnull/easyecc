@@ -11,10 +11,10 @@ import (
 func TestEncryption(t *testing.T) {
 	assert := assert.New(t)
 
-	alicePrivateKey, err := GeneratePrivateKey(SECP256K1)
+	alicePrivateKey, err := NewPrivateKey(SECP256K1)
 	assert.NoError(err)
 
-	bobPrivateKey, err := GeneratePrivateKey(SECP256K1)
+	bobPrivateKey, err := NewPrivateKey(SECP256K1)
 	assert.NoError(err)
 
 	key1x, key1y := btcec.S256().ScalarMult(alicePrivateKey.PublicKey().X(), alicePrivateKey.PublicKey().Y(),
@@ -30,10 +30,10 @@ func TestEncryption(t *testing.T) {
 func TestEncryptDecrypt(t *testing.T) {
 	assert := assert.New(t)
 
-	alicePrivateKey, err := GeneratePrivateKey(P256)
+	alicePrivateKey, err := NewPrivateKey(P256)
 	assert.NoError(err)
 
-	bobPrivateKey, err := GeneratePrivateKey(P256)
+	bobPrivateKey, err := NewPrivateKey(P256)
 	assert.NoError(err)
 
 	message := "All that we are is the result of what we have thought"
@@ -46,7 +46,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	assert.True(bytes.Equal([]byte(message), plaintext))
 
 	// Test error on different curves.
-	spongeBobPrivateKey, err := GeneratePrivateKey(P521)
+	spongeBobPrivateKey, err := NewPrivateKey(P521)
 	assert.NoError(err)
 	_, err = alicePrivateKey.EncryptECDH([]byte(message), spongeBobPrivateKey.PublicKey())
 	assert.Equal(ErrDifferentCurves, err)
@@ -55,7 +55,7 @@ func TestEncryptDecrypt(t *testing.T) {
 func TestEncryptDecryptSymmetric(t *testing.T) {
 	assert := assert.New(t)
 
-	privateKey, err := GeneratePrivateKey(P521)
+	privateKey, err := NewPrivateKey(P521)
 	assert.NoError(err)
 
 	message := "super secret message"

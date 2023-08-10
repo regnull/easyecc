@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/go-jose/go-jose/v3"
 	"github.com/tyler-smith/go-bip39"
 	"golang.org/x/crypto/pbkdf2"
 )
@@ -116,9 +115,9 @@ type privateKeyJSON struct {
 	D   string `json:"d"`
 }
 
-// GeneratePrivateKey creates a new random private key,
+// NewPrivateKey creates a new random private key,
 // given a curve.
-func GeneratePrivateKey(curve EllipticCurve) (*PrivateKey, error) {
+func NewPrivateKey(curve EllipticCurve) (*PrivateKey, error) {
 	privateKey, err := ecdsa.GenerateKey(getCurve(curve), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate private key, %v", err)
@@ -126,8 +125,8 @@ func GeneratePrivateKey(curve EllipticCurve) (*PrivateKey, error) {
 	return &PrivateKey{privateKey: privateKey}, nil
 }
 
-// CreatePrivateKey creates a private key on the given curve from secret.
-func CreatePrivateKey(curve EllipticCurve, secret *big.Int) *PrivateKey {
+// NewPrivateKeyFromSecret creates a private key on the given curve from secret.
+func NewPrivateKeyFromSecret(curve EllipticCurve, secret *big.Int) *PrivateKey {
 	privateKey := &ecdsa.PrivateKey{
 		D: secret}
 	privateKey.PublicKey.Curve = getCurve(curve)
@@ -136,64 +135,18 @@ func CreatePrivateKey(curve EllipticCurve, secret *big.Int) *PrivateKey {
 	return &PrivateKey{privateKey: privateKey}
 }
 
-// CreatePrivateKeyFromPassword creates a private key on the given curve from password using
+// NewPrivateKeyFromPassword creates a private key on the given curve from password using
 // PBKDF2 algorithm.
 // See https://en.wikipedia.org/wiki/PBKDF2.
-func CreatePrivateKeyFromPassword(curve EllipticCurve, password, salt []byte) *PrivateKey {
+func NewPrivateKeyFromPassword(curve EllipticCurve, password, salt []byte) *PrivateKey {
 	secret := pbkdf2.Key(password, salt, PBKDF2_ITER, PBKDF2_SIZE, sha256.New)
-	return CreatePrivateKey(curve, new(big.Int).SetBytes(secret))
+	return NewPrivateKeyFromSecret(curve, new(big.Int).SetBytes(secret))
 }
 
-// CreatePrivateKeyFromEncrypted creates a private key from from encrypted private
-// key using the passphrase.
-// Encryption is done using AES-256 with CGM cipher, with a key derived from the passphrase.
-func CreatePrivateKeyFromEncrypted(curve EllipticCurve, data []byte, passphrase string) (*PrivateKey,
-	error) {
-	// Data length must be the key length plus at least one more byte.
-	// TODO: This doesn't look like a useful check.
-	if len(data) < getKeyLength(curve)+1 {
-		return nil, fmt.Errorf("invalid data")
-	}
-	salt, data := data[len(data)-32:], data[:len(data)-32]
-
-	key, err := deriveKey([]byte(passphrase), salt)
-	if err != nil {
-		return nil, err
-	}
-
-	keyBytes, err := decrypt(key, data)
-	if err != nil {
-		return nil, err
-	}
-
-	secret := new(big.Int).SetBytes(keyBytes)
-	return CreatePrivateKey(curve, secret), nil
-}
-
-// NewPrivateKeyFromFile loads private key using given curve
-// from file and decrypts it using the given passphrase.
-// If the passphrase is an empty string, no decryption is done (the file content is assumed
-// to be not encrypted).
-func CreatePrivateKeyFromFile(curve EllipticCurve, fileName string, passphrase string) (*PrivateKey, error) {
-	// TODO: Perhaps rename this function to something like LoadPrivateKey in the next major version?
-	b, err := os.ReadFile(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load private key: %v", err)
-	}
-
-	if passphrase != "" {
-		return CreatePrivateKeyFromEncrypted(curve, b, passphrase)
-	}
-
-	secret := new(big.Int)
-	secret.SetBytes(b)
-	return CreatePrivateKey(curve, secret), nil
-}
-
-// CreatePrivateKeyFromJWKFile loads private key from file in JWK format, optionally
-// decrypting it.
-func CreatePrivateKeyFromJWKFile(fileName string, passphrase string) (*PrivateKey, error) {
-	// TODO: Rename this to LoadPrivateKeyAsJWK in the next major version.
+// NewPrivateKeyFromFile loads private key from fileName. If no passphrase is give,
+// the file is assumed to be in JWK format. If passphrase is given, the file is assumed
+// to be in JWE format, containing encrypted JWK key.
+func NewPrivateKeyFromFile(fileName string, passphrase string) (*PrivateKey, error) {
 	data, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key: %v", err)
@@ -201,13 +154,7 @@ func CreatePrivateKeyFromJWKFile(fileName string, passphrase string) (*PrivateKe
 
 	var jsonBytes []byte
 	if passphrase != "" {
-		salt, data := data[len(data)-32:], data[:len(data)-32]
-		key, err := deriveKey([]byte(passphrase), salt)
-		if err != nil {
-			return nil, err
-		}
-
-		jsonBytes, err = decrypt(key, data)
+		jsonBytes, err = decryptWithPassphraseJWE(passphrase, string(data))
 		if err != nil {
 			return nil, err
 		}
@@ -215,11 +162,12 @@ func CreatePrivateKeyFromJWKFile(fileName string, passphrase string) (*PrivateKe
 		jsonBytes = data
 	}
 
-	return CreatePrivateKeyFromJWK(jsonBytes)
+	return NewPrivateKeyFromJSON(string(jsonBytes))
 }
 
 // NewPrivateKeyFromMnemonic creates private key on given curve from a mnemonic phrase.
-func CreatePrivateKeyFromMnemonic(curve EllipticCurve, mnemonic string) (*PrivateKey, error) {
+// Only SECP256K1 and P256 keys can be created from mnemonic.
+func NewPrivateKeyFromMnemonic(curve EllipticCurve, mnemonic string) (*PrivateKey, error) {
 	if curve != SECP256K1 && curve != P256 {
 		return nil, ErrUnsupportedCurve
 	}
@@ -228,7 +176,7 @@ func CreatePrivateKeyFromMnemonic(curve EllipticCurve, mnemonic string) (*Privat
 		return nil, err
 	}
 	secret := new(big.Int).SetBytes(b)
-	return CreatePrivateKey(curve, secret), nil
+	return NewPrivateKeyFromSecret(curve, secret), nil
 }
 
 // Secret returns the private key's secret.
@@ -236,12 +184,12 @@ func (pk *PrivateKey) Secret() *big.Int {
 	return pk.privateKey.D
 }
 
-// CreatePrivateKeyFromJWK creates private key from JWK-encoded
+// CreatePrivateKeyFromJSON creates private key from JWK-encoded
 // representation.
 // See https://www.rfc-editor.org/rfc/rfc7517.
-func CreatePrivateKeyFromJWK(data []byte) (*PrivateKey, error) {
+func NewPrivateKeyFromJSON(data string) (*PrivateKey, error) {
 	var pkJSON privateKeyJSON
-	err := json.Unmarshal(data, &pkJSON)
+	err := json.Unmarshal([]byte(data), &pkJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -259,42 +207,26 @@ func CreatePrivateKeyFromJWK(data []byte) (*PrivateKey, error) {
 	}
 	d := new(big.Int)
 	d.SetBytes(dBytes)
-	return CreatePrivateKey(curve, d), nil
+	return NewPrivateKeyFromSecret(curve, d), nil
 }
 
-// Save saves the private key to the specified file. If the passphrase is given, the key will
-// be encrypted with this passphrase. If the passphrase is an empty string, the key is not
-// encrypted.
+// Save saves the private key to the specified file. If passphrase is empty, the file
+// will contain the key in JWK format. Otherwise, the file will contain encrypted JWK
+// key in JWE format.
 func (pk *PrivateKey) Save(fileName string, passphrase string) error {
-	if passphrase != "" {
-		data, err := pk.EncryptKeyWithPassphrase(passphrase)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(fileName, data, 0600)
-	}
-
-	// Pad with zero bytes if necessary.
-	b := padWithZeros(pk.privateKey.D.Bytes(), getKeyLength(pk.Curve()))
-	return os.WriteFile(fileName, b, 0600)
-}
-
-// SaveAsJWK writes the key to a file in JWK format, optionally encrypting it
-// with a passphrase.
-func (pk *PrivateKey) SaveAsJWK(fileName string, passphrase string) error {
-	jsonBytes, err := pk.MarshalToJWK()
+	keyJWK, err := pk.MarshalToJSON()
 	if err != nil {
 		return err
 	}
+	content := keyJWK
 	if passphrase != "" {
-		data, err := encryptWithPassphrase(passphrase, jsonBytes)
+		content, err = encryptWithPassphraseJWE(passphrase, []byte(content))
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(fileName, data, 0600)
 	}
 
-	return os.WriteFile(fileName, jsonBytes, 0600)
+	return os.WriteFile(fileName, []byte(content), 0600)
 }
 
 // PublicKey returns the public key derived from this private key.
@@ -333,6 +265,7 @@ func (pk *PrivateKey) Sign(hash []byte) (*Signature, error) {
 // in a way that is consistent with how it's done in crypto/ecdh.
 // This is the old way of doing this, which is somewhat different from what crypto/ecdh does.
 // The latter returns X coordinate bytes while we join X and Y and hash the result.
+// TODO: This will go to the deprecated package.
 func (pk *PrivateKey) getSharedEncryptionKeySecp256k1_Legacy(counterParty *PublicKey) []byte {
 	x, y := btcec.S256().ScalarMult(counterParty.X(), counterParty.Y(),
 		pk.privateKey.D.Bytes())
@@ -352,6 +285,7 @@ func (pk *PrivateKey) getSharedEncryptionKeySecp256k1(counterParty *PublicKey) [
 // EncryptSymmetric encrypts content using this private key. The same private key
 // must be used for decryption.
 // Encryption is done using AES-256 with CGM cipher.
+// TODO: Use JWE here? The function itself would probably go to deprecated package.
 func (pk *PrivateKey) EncryptSymmetric(content []byte) ([]byte, error) {
 	key := sha256.Sum256(pk.privateKey.D.Bytes())
 	return encrypt(key[:], content)
@@ -362,35 +296,6 @@ func (pk *PrivateKey) EncryptSymmetric(content []byte) ([]byte, error) {
 func (pk *PrivateKey) DecryptSymmetric(content []byte) ([]byte, error) {
 	key := sha256.Sum256(pk.privateKey.D.Bytes())
 	return decrypt(key[:], content)
-}
-
-func decryptWithPassphraseJWE(passphrase string, content string) ([]byte, error) {
-	var i interface{}
-	err := json.Unmarshal([]byte(content), &i)
-	if err != nil {
-		return nil, err
-	}
-	m, ok := i.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid content")
-	}
-	saltStr, ok := m["x-salt"].(string)
-	if !ok {
-		return nil, fmt.Errorf("invalid content")
-	}
-	salt, err := base64urlDecode(saltStr)
-	if err != nil {
-		return nil, fmt.Errorf("invalid content")
-	}
-	key, err := deriveKey([]byte(passphrase), salt)
-	if err != nil {
-		return nil, err
-	}
-	object, err := jose.ParseEncrypted(content)
-	if err != nil {
-		return nil, err
-	}
-	return object.Decrypt(key)
 }
 
 // EncryptKeyWithPassphrase encrypts this private key using a passphrase.
@@ -491,113 +396,22 @@ func (pk *PrivateKey) DecryptECDH(content []byte, publicKey *PublicKey) ([]byte,
 	return decrypt(encryptionKey, content)
 }
 
-// MarshalToJWK returns the key JWK representation,
+// MarshalToJSON returns the key JWK representation,
 // see https://www.rfc-editor.org/rfc/rfc7517.
-func (pk *PrivateKey) MarshalToJWK() ([]byte, error) {
+func (pk *PrivateKey) MarshalToJSON() (string, error) {
 	xEncoded := base64urlEncode(pk.PublicKey().X().Bytes())
 	yEncoded := base64urlEncode(pk.PublicKey().Y().Bytes())
 	dEncoded := base64urlEncode(pk.Secret().Bytes())
 
-	return json.MarshalIndent(privateKeyJSON{
+	b, err := json.Marshal(privateKeyJSON{
 		Kty: "EC",
 		Crv: pk.Curve().String(),
 		X:   xEncoded,
 		Y:   yEncoded,
 		D:   dEncoded,
-	}, "", "  ")
-}
-
-// Everything below is deprecated.
-
-// NewRandomPrivateKey creates a new random private key using SECP256K1 curve.
-//
-// Deprecated: Use GeneratePrivateKey instead.
-func NewRandomPrivateKey() (*PrivateKey, error) {
-	return GeneratePrivateKey(SECP256K1)
-}
-
-// NewPrivateKey returns new private key created from the secret using SECP256K1 curve.
-//
-// Deprecated: Use CreatePrivateKey instead.
-func NewPrivateKey(secret *big.Int) *PrivateKey {
-	return CreatePrivateKey(SECP256K1, secret)
-}
-
-// NewPrivateKeyFromPassword creates a new private key from password and salt using SECP256K1 curve.
-//
-// Deprecated: Use CreatePrivateKeyFromPassword.
-func NewPrivateKeyFromPassword(password, salt []byte) *PrivateKey {
-	return CreatePrivateKeyFromPassword(SECP256K1, password, salt)
-}
-
-// NewPrivateKeyFromEncryptedWithPassphrase creates a new private key using SECP256K1 curve
-// from encrypted private key using the passphrase.
-//
-// Deprecated: Use CreatePrivateKeyFromEncrypted instead.
-func NewPrivateKeyFromEncryptedWithPassphrase(data []byte, passphrase string) (*PrivateKey, error) {
-	return CreatePrivateKeyFromEncrypted(SECP256K1, data, passphrase)
-}
-
-// NewPrivateKeyFromFile loads private key using SECP256K1 curve
-// from file and decrypts it using the given passphrase.
-// If the passphrase is an empty string, no decryption is done (the file content is assumed
-// to be not encrypted).
-//
-// Deprecated: Use CreatePrivateKeyFromFile instead.
-func NewPrivateKeyFromFile(fileName string, passphrase string) (*PrivateKey, error) {
-	b, err := os.ReadFile(fileName)
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to load private key: %w", err)
+		return "", err
 	}
-
-	if len(b) < 32 {
-		return nil, fmt.Errorf("invalid private key length")
-	}
-
-	if passphrase != "" {
-		return NewPrivateKeyFromEncryptedWithPassphrase(b, passphrase)
-	}
-
-	if len(b) != 32 {
-		return nil, fmt.Errorf("invalid private key length")
-	}
-
-	secret := new(big.Int)
-	secret.SetBytes(b)
-	return NewPrivateKey(secret), nil
-}
-
-// NewPrivateKeyFromMnemonic creates private key on SECP256K1 curve from a mnemonic phrase.
-//
-// Deprecated: Use CreatePrivateKeyFromMnemonic instead.
-func NewPrivateKeyFromMnemonic(mnemonic string) (*PrivateKey, error) {
-	return CreatePrivateKeyFromMnemonic(SECP256K1, mnemonic)
-}
-
-// Encrypt encrypts content with a shared key derived from this private key and the
-// counter party public key. Works only on secp256k1 curve.
-//
-// Deprecated: Use EncryptECDH instead, which works on all supported curves.
-// Notice that Encrypt/Decrypt and EncryptECDH/DecryptECDH are not compatible on
-// secp256k1 curve, since they are using different ways of generating shared encryption key.
-func (pk *PrivateKey) Encrypt(content []byte, publicKey *PublicKey) ([]byte, error) {
-	if pk.Curve() != SECP256K1 {
-		return nil, ErrUnsupportedCurve
-	}
-	encryptionKey := pk.getSharedEncryptionKeySecp256k1_Legacy(publicKey)
-	return encrypt(encryptionKey, content)
-}
-
-// Decrypt decrypts content with a shared key derived from this private key and the
-// counter party public key.
-//
-// Deprecated: Use DecryptECDH instead, which works on all supported curves.
-// Notice that Encrypt/Decrypt and EncryptECDH/DecryptECDH are not compatible on
-// secp256k1 curve, since they are using different ways of generating shared encryption key.
-func (pk *PrivateKey) Decrypt(content []byte, publicKey *PublicKey) ([]byte, error) {
-	if pk.Curve() != SECP256K1 {
-		return nil, ErrUnsupportedCurve
-	}
-	encryptionKey := pk.getSharedEncryptionKeySecp256k1_Legacy(publicKey)
-	return decrypt(encryptionKey, content)
+	return string(b), nil
 }

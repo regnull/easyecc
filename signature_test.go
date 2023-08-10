@@ -14,7 +14,7 @@ func Test_SignAndVerify(t *testing.T) {
 	for _, curve := range curves {
 		for i := 0; i < 100; i++ {
 			hash := sha256.Sum256(data)
-			pkey, err := GeneratePrivateKey(curve)
+			pkey, err := NewPrivateKey(curve)
 			assert.NoError(err)
 			sig, err := pkey.Sign(hash[:])
 			assert.NoError(err)

@@ -43,7 +43,7 @@ func Test_PublicKey_SerializeCompressed(t *testing.T) {
 	assert := assert.New(t)
 
 	for _, curve := range curves {
-		privateKey := CreatePrivateKey(curve, big.NewInt(5001))
+		privateKey := NewPrivateKeyFromSecret(curve, big.NewInt(5001))
 		publicKey := privateKey.PublicKey()
 		serialized := publicKey.SerializeCompressed()
 		assert.EqualValues(serializedKeys[curve], fmt.Sprintf("%x", serialized))
@@ -55,7 +55,7 @@ func Test_PublicKey_Curve(t *testing.T) {
 	assert := assert.New(t)
 
 	for _, curve := range curves {
-		privateKey := CreatePrivateKey(curve, big.NewInt(5001))
+		privateKey := NewPrivateKeyFromSecret(curve, big.NewInt(5001))
 		publicKey := privateKey.PublicKey()
 		assert.Equal(curve, publicKey.Curve())
 	}
@@ -78,7 +78,7 @@ func Test_PublicKey_Address(t *testing.T) {
 	assert := assert.New(t)
 
 	secret, _ := new(big.Int).SetString("12345deadbeef", 16)
-	privateKey := NewPrivateKey(secret)
+	privateKey := NewPrivateKeyFromSecret(SECP256K1, secret)
 	address, err := privateKey.PublicKey().BitcoinAddress()
 	assert.NoError(err)
 	assert.Equal("1F1Pn2y6pDb68E5nYJJeba4TLg2U7B6KF1", address)
@@ -87,7 +87,7 @@ func Test_PublicKey_Address(t *testing.T) {
 func Test_PublicKey_Equal(t *testing.T) {
 	assert := assert.New(t)
 
-	privateKey1, err := NewRandomPrivateKey()
+	privateKey1, err := NewPrivateKey(SECP256K1)
 	assert.NoError(err)
 	publicKey1 := privateKey1.PublicKey()
 	publicKey2, err := NewPublicFromSerializedCompressed(publicKey1.SerializeCompressed())
@@ -96,7 +96,7 @@ func Test_PublicKey_Equal(t *testing.T) {
 	assert.True(publicKey1.Equal(publicKey2))
 	assert.True(publicKey1.EqualSerializedCompressed(publicKey2.SerializeCompressed()))
 
-	privateKey3, err := NewRandomPrivateKey()
+	privateKey3, err := NewPrivateKey(SECP256K1)
 	assert.NoError(err)
 	publicKey3 := privateKey3.PublicKey()
 
@@ -107,7 +107,7 @@ func Test_PublicKey_Equal(t *testing.T) {
 func Test_PublicKey_SerializeSECP256K1(t *testing.T) {
 	assert := assert.New(t)
 
-	key, err := GeneratePrivateKey(SECP256K1)
+	key, err := NewPrivateKey(SECP256K1)
 	assert.NoError(err)
 
 	b := key.PublicKey().Serialize()
@@ -123,7 +123,7 @@ func Test_PublicKey_ToECDSA(t *testing.T) {
 	assert := assert.New(t)
 
 	for _, curve := range curves {
-		privateKey, err := GeneratePrivateKey(curve)
+		privateKey, err := NewPrivateKey(curve)
 		assert.NoError(err)
 		assert.NotNil(privateKey.PublicKey().ToECDSA())
 	}
@@ -132,7 +132,7 @@ func Test_PublicKey_ToECDSA(t *testing.T) {
 func Test_PublicKey_BitcoinEthereumAddress(t *testing.T) {
 	assert := assert.New(t)
 
-	privateKey := CreatePrivateKey(SECP256K1, big.NewInt(12345))
+	privateKey := NewPrivateKeyFromSecret(SECP256K1, big.NewInt(12345))
 	publicKey := privateKey.PublicKey()
 	bitcoinAddress, err := publicKey.BitcoinAddress()
 	assert.NoError(err)
@@ -141,7 +141,7 @@ func Test_PublicKey_BitcoinEthereumAddress(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("0xEB4665750b1382DF4AeBF49E04B429AAAc4d9929", ethereumAddress)
 
-	wrongCurveKey := CreatePrivateKey(P521, big.NewInt(12345))
+	wrongCurveKey := NewPrivateKeyFromSecret(P521, big.NewInt(12345))
 	_, err = wrongCurveKey.PublicKey().BitcoinAddress()
 	assert.Equal(ErrUnsupportedCurve, err)
 	_, err = wrongCurveKey.PublicKey().EthereumAddress()
