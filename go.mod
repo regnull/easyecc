@@ -1,6 +1,6 @@
-module github.com/regnull/easyecc
+module github.com/regnull/easyecc/v2
 
-go 1.16
+go 1.20
 
 require (
 	github.com/Azure/azure-pipeline-go v0.2.2 // indirect
