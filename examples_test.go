@@ -64,9 +64,9 @@ func ExamplePrivateKey_MarshalToJSON() {
 func ExamplePublicKey_SerializeCompressed() {
 	privateKey := NewPrivateKeyFromSecret(P256, big.NewInt(12345))
 	publicKey := privateKey.PublicKey()
-	serializedCompressed := publicKey.SerializeCompressed()
+	serializedCompressed := publicKey.CompressedBytes()
 	fmt.Printf("%x\n", serializedCompressed)
-	publicKeyCopy, err := DeserializeCompressed(P256, serializedCompressed)
+	publicKeyCopy, err := NewPublicKeyFromCompressedBytes(P256, serializedCompressed)
 	if err != nil {
 		log.Fatal(err)
 	}

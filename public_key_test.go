@@ -45,7 +45,7 @@ func Test_PublicKey_SerializeCompressed(t *testing.T) {
 	for _, curve := range curves {
 		privateKey := NewPrivateKeyFromSecret(curve, big.NewInt(5001))
 		publicKey := privateKey.PublicKey()
-		serialized := publicKey.SerializeCompressed()
+		serialized := publicKey.CompressedBytes()
 		assert.EqualValues(serializedKeys[curve], fmt.Sprintf("%x", serialized))
 		assert.True(true)
 	}
@@ -66,7 +66,7 @@ func Test_PublicKey_FromSerializedCompressed(t *testing.T) {
 
 	for _, curve := range curves {
 		serialized, _ := new(big.Int).SetString(serializedKeys[curve], 16)
-		publicKey, err := DeserializeCompressed(curve, serialized.Bytes())
+		publicKey, err := NewPublicKeyFromCompressedBytes(curve, serialized.Bytes())
 		assert.NoError(err)
 		assert.NotNil(publicKey)
 		assert.EqualValues(serializedKeyComponents[curve].X, fmt.Sprintf("%064x", publicKey.publicKey.X))
@@ -90,18 +90,18 @@ func Test_PublicKey_Equal(t *testing.T) {
 	privateKey1, err := NewPrivateKey(SECP256K1)
 	assert.NoError(err)
 	publicKey1 := privateKey1.PublicKey()
-	publicKey2, err := NewPublicFromSerializedCompressed(publicKey1.SerializeCompressed())
+	publicKey2, err := NewPublicKeyFromCompressedBytes(SECP256K1, publicKey1.CompressedBytes())
 	assert.NoError(err)
 
 	assert.True(publicKey1.Equal(publicKey2))
-	assert.True(publicKey1.EqualSerializedCompressed(publicKey2.SerializeCompressed()))
+	assert.True(publicKey1.EqualSerializedCompressed(publicKey2.CompressedBytes()))
 
 	privateKey3, err := NewPrivateKey(SECP256K1)
 	assert.NoError(err)
 	publicKey3 := privateKey3.PublicKey()
 
 	assert.False(publicKey1.Equal(publicKey3))
-	assert.False(publicKey1.EqualSerializedCompressed(publicKey3.SerializeCompressed()))
+	assert.False(publicKey1.EqualSerializedCompressed(publicKey3.CompressedBytes()))
 }
 
 func Test_PublicKey_SerializeSECP256K1(t *testing.T) {
@@ -110,10 +110,10 @@ func Test_PublicKey_SerializeSECP256K1(t *testing.T) {
 	key, err := NewPrivateKey(SECP256K1)
 	assert.NoError(err)
 
-	b := key.PublicKey().Serialize()
+	b := key.PublicKey().Bytes()
 	assert.True(len(b) > 0)
 
-	publicKey, err := Deserialize(SECP256K1, b)
+	publicKey, err := NewPublicKeyFromBytes(SECP256K1, b)
 	assert.NoError(err)
 
 	assert.True(publicKey.Equal(key.PublicKey()))

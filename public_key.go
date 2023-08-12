@@ -59,42 +59,33 @@ func unmarshalCompressedSECP256K1(serialized []byte) (*PublicKey, error) {
 		Y:     y}}, nil
 }
 
-// NewPublicFromSerializedCompressed creates new public key from serialized
-// compressed format.
-func NewPublicFromSerializedCompressed(serialized []byte) (*PublicKey, error) {
-	return DeserializeCompressed(SECP256K1, serialized)
-}
-
-func Deserialize(curve EllipticCurve, serialized []byte) (*PublicKey, error) {
-	// if curve == SECP256K1 {
-	// 	return nil, fmt.Errorf("cannot deserialize on SECP256K1 curve")
-	// }
-	x, y := elliptic.Unmarshal(getCurve(curve), serialized)
+func NewPublicKeyFromBytes(curve EllipticCurve, b []byte) (*PublicKey, error) {
+	x, y := elliptic.Unmarshal(getCurve(curve), b)
 	return &PublicKey{publicKey: &ecdsa.PublicKey{
 		Curve: getCurve(curve),
 		X:     x,
 		Y:     y}}, nil
 }
 
-func DeserializeCompressed(curve EllipticCurve, serialized []byte) (*PublicKey, error) {
+func NewPublicKeyFromCompressedBytes(curve EllipticCurve, b []byte) (*PublicKey, error) {
 	if curve == SECP256K1 {
 		// Special case - elliptic.UnmarshalCompressed cannot handle it.
-		return unmarshalCompressedSECP256K1(serialized)
+		return unmarshalCompressedSECP256K1(b)
 	}
-	x, y := elliptic.UnmarshalCompressed(getCurve(curve), serialized)
+	x, y := elliptic.UnmarshalCompressed(getCurve(curve), b)
 	return &PublicKey{publicKey: &ecdsa.PublicKey{
 		Curve: getCurve(curve),
 		X:     x,
 		Y:     y}}, nil
 }
 
-func (pbk *PublicKey) Serialize() []byte {
+func (pbk *PublicKey) Bytes() []byte {
 	return elliptic.Marshal(pbk.publicKey.Curve, pbk.publicKey.X, pbk.publicKey.Y)
 }
 
 // SerializeCompressed returns the private key serialized in SEC compressed format. The result
 // is 33 bytes long.
-func (pbk *PublicKey) SerializeCompressed() []byte {
+func (pbk *PublicKey) CompressedBytes() []byte {
 	return elliptic.MarshalCompressed(pbk.publicKey.Curve, pbk.publicKey.X, pbk.publicKey.Y)
 }
 
@@ -132,7 +123,7 @@ func (pbk *PublicKey) BitcoinAddress() (string, error) {
 		return "", ErrUnsupportedCurve
 	}
 	prefix := []byte{0x00}
-	s := pbk.SerializeCompressed()
+	s := pbk.CompressedBytes()
 	hash := Hash160(s)
 	s1 := bytes.Join([][]byte{prefix, hash}, nil)
 	checkSum := Hash256(s1)[0:4]
@@ -161,7 +152,7 @@ func (pbk *PublicKey) Equal(other *PublicKey) bool {
 // EqualSerializedCompressed returns true if this key is equal to the other,
 // given as serialized compressed representation.
 func (pbk *PublicKey) EqualSerializedCompressed(other []byte) bool {
-	return bytes.Equal(pbk.SerializeCompressed(), other)
+	return bytes.Equal(pbk.CompressedBytes(), other)
 }
 
 // ToECDSA returns this key as crypto/ecdsa public key.

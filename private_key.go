@@ -328,7 +328,7 @@ func (pk *PrivateKey) GetECDHEncryptionKey(publicKey *PublicKey) ([]byte, error)
 		if err != nil {
 			return nil, err
 		}
-		pubKey, err = ecdh.P256().NewPublicKey(publicKey.Serialize())
+		pubKey, err = ecdh.P256().NewPublicKey(publicKey.Bytes())
 		if err != nil {
 			return nil, err
 		}
@@ -338,7 +338,7 @@ func (pk *PrivateKey) GetECDHEncryptionKey(publicKey *PublicKey) ([]byte, error)
 		if err != nil {
 			return nil, err
 		}
-		pubKey, err = ecdh.P384().NewPublicKey(publicKey.Serialize())
+		pubKey, err = ecdh.P384().NewPublicKey(publicKey.Bytes())
 		if err != nil {
 			return nil, err
 		}
@@ -348,7 +348,7 @@ func (pk *PrivateKey) GetECDHEncryptionKey(publicKey *PublicKey) ([]byte, error)
 		if err != nil {
 			return nil, err
 		}
-		pubKey, err = ecdh.P521().NewPublicKey(publicKey.Serialize())
+		pubKey, err = ecdh.P521().NewPublicKey(publicKey.Bytes())
 		if err != nil {
 			return nil, err
 		}
