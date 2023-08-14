@@ -88,6 +88,21 @@ func DeserializeCompressed(curve EllipticCurve, serialized []byte) (*PublicKey, 
 		Y:     y}}, nil
 }
 
+// NewKey creates a new public key
+func NewKey(curve elliptic.Curve, x *big.Int, y *big.Int) *PublicKey {
+	if x == nil || y == nil {
+		return nil
+	}
+	return &PublicKey{
+		publicKey: &ecdsa.PublicKey{
+			Curve: curve,
+			X:     x,
+			Y:     y,
+		},
+	}
+
+}
+
 func (pbk *PublicKey) Serialize() []byte {
 	return elliptic.Marshal(pbk.publicKey.Curve, pbk.publicKey.X, pbk.publicKey.Y)
 }
