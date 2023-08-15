@@ -88,7 +88,7 @@ func DeserializeCompressed(curve EllipticCurve, serialized []byte) (*PublicKey, 
 		Y:     y}}, nil
 }
 
-// NewKey creates a new public key
+// CreatePublicKeyFromPoint creates a new public key given a point on the curve.
 func CreatePublicKeyFromPoint(curve elliptic.Curve, x *big.Int, y *big.Int) *PublicKey {
 	if x == nil || y == nil {
 		return nil
