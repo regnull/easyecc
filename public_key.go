@@ -79,6 +79,21 @@ func NewPublicKeyFromCompressedBytes(curve EllipticCurve, b []byte) (*PublicKey,
 		Y:     y}}, nil
 }
 
+// NewPublicKeyFromPoint creates a new public key given a point on the curve.
+func NewPublicKeyFromPoint(curve elliptic.Curve, x *big.Int, y *big.Int) *PublicKey {
+	if x == nil || y == nil {
+		return nil
+	}
+	return &PublicKey{
+		publicKey: &ecdsa.PublicKey{
+			Curve: curve,
+			X:     x,
+			Y:     y,
+		},
+	}
+
+}
+
 func (pbk *PublicKey) Bytes() []byte {
 	return elliptic.Marshal(pbk.publicKey.Curve, pbk.publicKey.X, pbk.publicKey.Y)
 }

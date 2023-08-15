@@ -1,6 +1,9 @@
 package easyecc
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"fmt"
 	"math/big"
 	"testing"
@@ -146,4 +149,51 @@ func Test_PublicKey_BitcoinEthereumAddress(t *testing.T) {
 	assert.Equal(ErrUnsupportedCurve, err)
 	_, err = wrongCurveKey.PublicKey().EthereumAddress()
 	assert.Equal(ErrUnsupportedCurve, err)
+}
+
+func Test_PublicKey_NewFromPoint(t *testing.T) {
+	randomBigInt := func(bitSize int) *big.Int {
+		max := new(big.Int)
+		max.Exp(big.NewInt(2), big.NewInt(int64(bitSize)), nil).Sub(max, big.NewInt(1))
+		n, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			return nil
+		}
+		return n
+	}
+	x := randomBigInt(256)
+	y := randomBigInt(256)
+	type args struct {
+		curve elliptic.Curve
+		x     *big.Int
+		y     *big.Int
+	}
+	tests := []struct {
+		name string
+		args args
+		want *PublicKey
+	}{
+		{
+			name: "valid input",
+			args: args{curve: elliptic.P256(), x: x, y: y},
+			want: &PublicKey{publicKey: &ecdsa.PublicKey{elliptic.P256(), x, y}},
+		},
+		{
+			name: "invalid input x",
+			args: args{curve: elliptic.P256(), x: nil, y: y},
+			want: nil,
+		},
+		{
+			name: "invalid input y",
+			args: args{curve: elliptic.P256(), x: x, y: nil},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, NewPublicKeyFromPoint(tt.args.curve,
+				tt.args.x, tt.args.y),
+				"NewKey(%v, %v, %v)", tt.args.curve, tt.args.x, tt.args.y)
+		})
+	}
 }
