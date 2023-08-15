@@ -151,7 +151,7 @@ func Test_PublicKey_BitcoinEthereumAddress(t *testing.T) {
 	assert.Equal(ErrUnsupportedCurve, err)
 }
 
-func TestNewKey(t *testing.T) {
+func Test_PublicKey_CreateFromPoint(t *testing.T) {
 	randomBigInt := func(bitSize int) *big.Int {
 		max := new(big.Int)
 		max.Exp(big.NewInt(2), big.NewInt(int64(bitSize)), nil).Sub(max, big.NewInt(1))
@@ -191,7 +191,8 @@ func TestNewKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, NewKey(tt.args.curve, tt.args.x, tt.args.y), "NewKey(%v, %v, %v)", tt.args.curve, tt.args.x, tt.args.y)
+			assert.Equalf(t, tt.want, CreatePublicKeyFromPoint(tt.args.curve,
+tt.args.x, tt.args.y), "NewKey(%v, %v, %v)", tt.args.curve, tt.args.x, tt.args.y)
 		})
 	}
 }
