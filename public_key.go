@@ -73,6 +73,9 @@ func NewPublicKeyFromCompressedBytes(curve EllipticCurve, b []byte) (*PublicKey,
 		return unmarshalCompressedSECP256K1(b)
 	}
 	x, y := elliptic.UnmarshalCompressed(getCurve(curve), b)
+	if x == nil || y == nil {
+		return nil, fmt.Errorf("invalid key representation")
+	}
 	return &PublicKey{publicKey: &ecdsa.PublicKey{
 		Curve: getCurve(curve),
 		X:     x,

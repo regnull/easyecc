@@ -75,6 +75,15 @@ func Test_PublicKey_FromSerializedCompressed(t *testing.T) {
 		assert.EqualValues(serializedKeyComponents[curve].X, fmt.Sprintf("%064x", publicKey.publicKey.X))
 		assert.EqualValues(serializedKeyComponents[curve].Y, fmt.Sprintf("%064x", publicKey.publicKey.Y))
 	}
+	// Try invalid key bytes, make sure an error is returned.
+	for _, curve := range curves {
+		privateKey, err := NewPrivateKey(curve)
+		assert.NoError(err)
+		// Intentionally use Bytes() instead of CompressedBytes() to force error.
+		publicKey, err := NewPublicKeyFromCompressedBytes(curve, privateKey.PublicKey().Bytes())
+		assert.Nil(publicKey)
+		assert.Error(err)
+	}
 }
 
 func Test_PublicKey_Address(t *testing.T) {
