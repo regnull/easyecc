@@ -4,27 +4,26 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEncryption(t *testing.T) {
-	assert := assert.New(t)
-
 	alicePrivateKey, err := GeneratePrivateKey(SECP256K1)
-	assert.NoError(err)
+	require.NoError(t, err)
 
 	bobPrivateKey, err := GeneratePrivateKey(SECP256K1)
-	assert.NoError(err)
+	require.NoError(t, err)
 
-	key1x, key1y := btcec.S256().ScalarMult(alicePrivateKey.PublicKey().X(), alicePrivateKey.PublicKey().Y(),
+	key1x, key1y := crypto.S256().ScalarMult(alicePrivateKey.PublicKey().X(), alicePrivateKey.PublicKey().Y(),
 		bobPrivateKey.Secret().Bytes())
 
-	key2x, key2y := btcec.S256().ScalarMult(bobPrivateKey.PublicKey().X(), bobPrivateKey.PublicKey().Y(),
+	key2x, key2y := crypto.S256().ScalarMult(bobPrivateKey.PublicKey().X(), bobPrivateKey.PublicKey().Y(),
 		alicePrivateKey.Secret().Bytes())
 
-	assert.Equal(key1x, key2x)
-	assert.Equal(key1y, key2y)
+	require.Equal(t, key1x, key2x)
+	require.Equal(t, key1y, key2y)
 }
 
 func TestEncryptDecrypt(t *testing.T) {

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -32,11 +31,11 @@ func unmarshalCompressedSECP256K1(serialized []byte) (*PublicKey, error) {
 		return nil, fmt.Errorf("invalid serialized compressed public key")
 	}
 	x := new(big.Int).SetBytes(serialized[1:])
-	P := btcec.S256().CurveParams.P
+	P := crypto.S256().Params().P
 	sqrtExp := new(big.Int).Add(P, big.NewInt(1))
 	sqrtExp = sqrtExp.Div(sqrtExp, big.NewInt(4))
 	alpha := new(big.Int).Exp(x, big.NewInt(3), P)
-	alpha.Add(alpha, btcec.S256().B)
+	alpha.Add(alpha, crypto.S256().Params().B)
 	beta := new(big.Int).Exp(alpha, sqrtExp, P)
 	var evenBeta *big.Int
 	var oddBeta *big.Int
@@ -54,7 +53,7 @@ func unmarshalCompressedSECP256K1(serialized []byte) (*PublicKey, error) {
 		y = oddBeta
 	}
 	return &PublicKey{publicKey: &ecdsa.PublicKey{
-		Curve: btcec.S256(),
+		Curve: crypto.S256(),
 		X:     x,
 		Y:     y}}, nil
 }
@@ -115,7 +114,7 @@ func (pbk *PublicKey) SerializeCompressed() []byte {
 
 // Curve returns the elliptic curve for this public key.
 func (pbk *PublicKey) Curve() EllipticCurve {
-	if pbk.publicKey.Curve == btcec.S256() {
+	if pbk.publicKey.Curve == crypto.S256() {
 		return SECP256K1
 	}
 	if pbk.publicKey.Curve == elliptic.P256() {

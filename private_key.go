@@ -17,7 +17,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/tyler-smith/go-bip39"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/scrypt"
@@ -74,7 +74,7 @@ func StringToEllipticCurve(s string) EllipticCurve {
 func getCurve(curve EllipticCurve) elliptic.Curve {
 	switch curve {
 	case SECP256K1:
-		return btcec.S256()
+		return crypto.S256()
 	case P256:
 		return elliptic.P256()
 	case P384:
@@ -120,6 +120,11 @@ func GeneratePrivateKey(curve EllipticCurve) (*PrivateKey, error) {
 		return nil, fmt.Errorf("failed to generate private key, %v", err)
 	}
 	return &PrivateKey{privateKey: privateKey}, nil
+}
+
+// CreatePrivateKeyFromETHKey creates private key from eth generated key
+func CreatePrivateKeyFromETHKey(privateKey *ecdsa.PrivateKey) *PrivateKey {
+	return &PrivateKey{privateKey: privateKey}
 }
 
 // CreatePrivateKey creates a private key on the given curve from secret.
@@ -299,7 +304,7 @@ func (pk *PrivateKey) PublicKey() *PublicKey {
 
 // Curve returns the elliptic curve for this public key.
 func (pk *PrivateKey) Curve() EllipticCurve {
-	if pk.privateKey.Curve == btcec.S256() {
+	if pk.privateKey.Curve == crypto.S256() {
 		return SECP256K1
 	}
 	if pk.privateKey.Curve == elliptic.P256() {
@@ -329,7 +334,7 @@ func (pk *PrivateKey) Sign(hash []byte) (*Signature, error) {
 // This is the old way of doing this, which is somewhat different from what crypto/ecdh does.
 // The latter returns X coordinate bytes while we join X and Y and hash the result.
 func (pk *PrivateKey) getSharedEncryptionKeySecp256k1_Legacy(counterParty *PublicKey) []byte {
-	x, y := btcec.S256().ScalarMult(counterParty.X(), counterParty.Y(),
+	x, y := crypto.S256().ScalarMult(counterParty.X(), counterParty.Y(),
 		pk.privateKey.D.Bytes())
 	b := bytes.Join([][]byte{x.Bytes(), y.Bytes()}, nil)
 	hash := sha256.Sum256(b)
@@ -339,7 +344,7 @@ func (pk *PrivateKey) getSharedEncryptionKeySecp256k1_Legacy(counterParty *Publi
 // getSharedEncryptionKeySecp256k1 computes a shared encryption key for SECP256K1 curve
 // in a way that is consistent with how it's done in crypto/ecdh.
 func (pk *PrivateKey) getSharedEncryptionKeySecp256k1(counterParty *PublicKey) []byte {
-	x, _ := btcec.S256().ScalarMult(counterParty.X(), counterParty.Y(),
+	x, _ := crypto.S256().ScalarMult(counterParty.X(), counterParty.Y(),
 		pk.privateKey.D.Bytes())
 	return x.Bytes()
 }

@@ -2,6 +2,7 @@ package easyecc
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"fmt"
 	"math/big"
@@ -10,7 +11,9 @@ import (
 	"path"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var curves = []EllipticCurve{SECP256K1, P256, P384, P521}
@@ -384,4 +387,63 @@ func Test_PrivateKey_SaveAsJWK(t *testing.T) {
 
 	_, err = CreatePrivateKeyFromJWKFile("some_non_existent_file", "foo")
 	assert.Error(err)
+}
+
+func TestCreatePrivateKeyFromETHKey(t *testing.T) {
+	t.Run("data should me encrypted and decrypted", func(t *testing.T) {
+		// given
+		alicePrivateKey := getPrivateKeyFromETH(t)
+
+		// when
+		encrypted, err := alicePrivateKey.EncryptSymmetric([]byte("super secret spies"))
+		require.NoError(t, err)
+		require.NotNil(t, encrypted)
+
+		// then
+		data, err := alicePrivateKey.DecryptSymmetric(encrypted)
+		require.NoError(t, err)
+		require.NotNil(t, data)
+
+		require.Equal(t, "super secret spies", string(data))
+	})
+	t.Run("key should return same address", func(t *testing.T) {
+		// given
+		alicePrivateKey, err := crypto.GenerateKey()
+		require.NoError(t, err)
+		publicKeyECDSA, ok := alicePrivateKey.Public().(*ecdsa.PublicKey)
+		require.True(t, ok)
+		ethAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+		key := CreatePrivateKeyFromETHKey(alicePrivateKey)
+
+		// when
+		publicKey := key.PublicKey()
+		keyAddress, err := publicKey.EthereumAddress()
+		require.NoError(t, err)
+
+		// then
+		require.Equal(t, ethAddress.String(), keyAddress)
+	})
+	t.Run("keys should generate shared secret", func(t *testing.T) {
+		// given
+		alicePK := getPrivateKeyFromETH(t)
+		bobPK := getPrivateKeyFromETH(t)
+		data := "super secret message"
+
+		// when
+		encrypted, err := alicePK.EncryptECDH([]byte(data), bobPK.PublicKey())
+		require.NoError(t, err)
+
+		decrypted, err := bobPK.DecryptECDH(encrypted, alicePK.PublicKey())
+		require.NoError(t, err)
+
+		// then
+		require.Equal(t, data, string(decrypted))
+	})
+}
+
+func getPrivateKeyFromETH(t *testing.T) *PrivateKey {
+	privateKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+
+	return CreatePrivateKeyFromETHKey(privateKey)
 }
