@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/tyler-smith/go-bip39"
 	"golang.org/x/crypto/pbkdf2"
 )
@@ -73,7 +73,7 @@ func StringToEllipticCurve(s string) EllipticCurve {
 func getCurve(curve EllipticCurve) elliptic.Curve {
 	switch curve {
 	case SECP256K1:
-		return btcec.S256()
+		return crypto.S256()
 	case P256:
 		return elliptic.P256()
 	case P384:
@@ -235,7 +235,7 @@ func (pk *PrivateKey) PublicKey() *PublicKey {
 
 // Curve returns the elliptic curve for this public key.
 func (pk *PrivateKey) Curve() EllipticCurve {
-	if pk.privateKey.Curve == btcec.S256() {
+	if pk.privateKey.Curve == crypto.S256() {
 		return SECP256K1
 	}
 	if pk.privateKey.Curve == elliptic.P256() {
@@ -263,7 +263,7 @@ func (pk *PrivateKey) Sign(hash []byte) (*Signature, error) {
 // getSharedEncryptionKeySecp256k1 computes a shared encryption key for SECP256K1 curve
 // in a way that is consistent with how it's done in crypto/ecdh.
 func (pk *PrivateKey) getSharedEncryptionKeySecp256k1(counterParty *PublicKey) []byte {
-	x, _ := btcec.S256().ScalarMult(counterParty.X(), counterParty.Y(),
+	x, _ := crypto.S256().ScalarMult(counterParty.X(), counterParty.Y(),
 		pk.privateKey.D.Bytes())
 	return x.Bytes()
 }
