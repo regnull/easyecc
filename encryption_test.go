@@ -10,11 +10,13 @@ import (
 )
 
 func TestEncryption(t *testing.T) {
+	require := require.New(t)
+
 	alicePrivateKey, err := GeneratePrivateKey(SECP256K1)
-	require.NoError(t, err)
+	require.NoError(err)
 
 	bobPrivateKey, err := GeneratePrivateKey(SECP256K1)
-	require.NoError(t, err)
+	require.NoError(err)
 
 	key1x, key1y := crypto.S256().ScalarMult(alicePrivateKey.PublicKey().X(), alicePrivateKey.PublicKey().Y(),
 		bobPrivateKey.Secret().Bytes())
@@ -22,8 +24,8 @@ func TestEncryption(t *testing.T) {
 	key2x, key2y := crypto.S256().ScalarMult(bobPrivateKey.PublicKey().X(), bobPrivateKey.PublicKey().Y(),
 		alicePrivateKey.Secret().Bytes())
 
-	require.Equal(t, key1x, key2x)
-	require.Equal(t, key1y, key2y)
+	require.Equal(key1x, key2x)
+	require.Equal(key1y, key2y)
 }
 
 func TestEncryptDecrypt(t *testing.T) {
