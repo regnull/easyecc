@@ -4,9 +4,9 @@ go 1.20
 
 require (
 	github.com/btcsuite/btcd v0.20.1-beta
-	github.com/btcsuite/btcutil v1.0.2
 	github.com/ethereum/go-ethereum v1.13.4
 	github.com/go-jose/go-jose/v3 v3.0.0
+	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tyler-smith/go-bip39 v1.1.0
 	golang.org/x/crypto v0.14.0
