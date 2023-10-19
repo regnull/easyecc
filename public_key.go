@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/mr-tron/base58"
 )
 
 // PublicKey represents elliptic curve cryptography private key.
